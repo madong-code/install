@@ -1,0 +1,18 @@
+{
+  "installInfo": {
+    "title": "Madong 管理系统安装向导123",
+    "version": "1.0.0",
+    "description": "快速开发通用管理后台框架sddd"
+  },
+  "siteInfo": {
+    "logo": "./logo.png",
+    "name": "Madong 管理系统",
+    "officialWebsite": "https://madong.tech",
+    "community": "https://madong.tech/question/",
+    "documentation": "https://madong.tech/doc",
+    "frontendUrl": "/",
+    "backendUrl": "/admin",
+    "configUrl": "/admin#/system/config"
+  },
+  "apiBaseUrl": "/"
+}

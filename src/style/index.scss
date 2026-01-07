@@ -1,0 +1,256 @@
+/* 扁平化设计样式 */
+.flat-card {
+  box-shadow: none !important;
+  border: 1px solid #e4e7ed !important;
+  border-radius: 6px !important;
+  
+  .el-card__header {
+    border-bottom: 1px solid #e4e7ed !important;
+    background: #f8f9fa !important;
+    padding: 16px 20px !important;
+    
+    .card-header {
+      font-weight: 600;
+      color: #303133;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+  }
+}
+
+.flat-form {
+  .el-form-item {
+    margin-bottom: 20px;
+    
+    .el-form-item__label {
+      font-weight: 500;
+      color: #606266;
+    }
+  }
+}
+
+.flat-input {
+  .el-input__wrapper {
+    box-shadow: none !important;
+    border: 1px solid #dcdfe6 !important;
+    border-radius: 4px !important;
+    
+    &:hover {
+      border-color: #c0c4cc !important;
+    }
+    
+    &.is-focus {
+      border-color: #409eff !important;
+      box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.1) !important;
+    }
+  }
+}
+
+.flat-button {
+  border: 1px solid #dcdfe6 !important;
+  background: #fff !important;
+  color: #606266 !important;
+  border-radius: 4px !important;
+  
+  &:hover {
+    border-color: #c0c4cc !important;
+    background: #f5f7fa !important;
+  }
+  
+  &.primary {
+    background: #409eff !important;
+    border-color: #409eff !important;
+    color: #fff !important;
+    
+    &:hover {
+      background: #66b1ff !important;
+      border-color: #66b1ff !important;
+    }
+    
+    &:disabled {
+      background: #a0cfff !important;
+      border-color: #a0cfff !important;
+    }
+  }
+}
+
+.flat-table {
+  .el-table {
+    border: 1px solid #e4e7ed !important;
+    border-radius: 6px !important;
+    overflow: hidden;
+    
+    th {
+      background: #f5f7fa !important;
+      color: #606266 !important;
+      font-weight: 600 !important;
+      border-bottom: 1px solid #e4e7ed !important;
+    }
+    
+    td {
+      border-bottom: 1px solid #e4e7ed !important;
+    }
+  }
+}
+
+.flat-alert {
+  border: none !important;
+  border-radius: 6px !important;
+  
+  .el-alert__title {
+    font-weight: 600 !important;
+  }
+}
+
+/* 步骤条扁平化 */
+.install-steps {
+  .el-step {
+    .el-step__head {
+      .el-step__icon {
+        border: 2px solid #e4e7ed !important;
+        background: #fff !important;
+        
+        &.is-process {
+          border-color: #409eff !important;
+          color: #409eff !important;
+        }
+        
+        &.is-finish {
+          border-color: #67c23a !important;
+          background: #67c23a !important;
+          color: #fff !important;
+        }
+      }
+    }
+    
+    .el-step__title {
+      font-weight: 500 !important;
+      
+      &.is-process {
+        color: #409eff !important;
+      }
+      
+      &.is-finish {
+        color: #67c23a !important;
+      }
+    }
+  }
+}
+
+/* 安装控制台样式 */
+.console-output {
+  background: #1e1e1e !important;
+  color: #d4d4d4 !important;
+  font-family: 'Courier New', monospace !important;
+  border-radius: 4px !important;
+  border: 1px solid #333 !important;
+}
+
+/* 进度条扁平化 */
+.el-progress {
+  .el-progress-bar {
+    .el-progress-bar__outer {
+      background: #f0f2f5 !important;
+      border-radius: 4px !important;
+    }
+    
+    .el-progress-bar__inner {
+      border-radius: 4px !important;
+    }
+  }
+}
+
+/* 优化滚动条样式 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+  transition: background 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* 主页滚动条优化 */
+.install-app {
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: #f5f7fa;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: #dcdfe6;
+    border-radius: 4px;
+  }
+  
+  &::-webkit-scrollbar-thumb:hover {
+    background: #c0c4cc;
+  }
+}
+
+/* 步骤内容区域优化 */
+.step-content {
+  padding: 0;
+  background: none;
+  border: none;
+  box-shadow: none;
+}
+
+.step-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e4e7ed;
+}
+
+.step-actions {
+  margin-top: 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 20px;
+  border-top: 1px solid #e4e7ed;
+}
+
+/* 协议内容滚动条优化 */
+.agreement-body {
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 2px;
+  }
+  
+  &:hover::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+  }
+  
+  &:hover::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+  }
+}
