@@ -14,5 +14,5 @@
     "backendUrl": "/admin",
     "configUrl": "/admin#/system/config"
   },
-  "apiBaseUrl": "/"
+  "apiBaseUrl": "/adminapi"
 }

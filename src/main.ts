@@ -3,12 +3,13 @@ import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 import App from './App.vue'
 import { createPinia } from 'pinia'
-import { initConfig, publicConfig } from './utils/config'
+import { initConfig, getConfig } from './utils/config'
 
 // 动态设置页面标题
 function setDocumentTitle(title?: string) {
   const defaultTitle = 'MDAdmin 安装向导'
-  const finalTitle = title || publicConfig.installInfo.title || defaultTitle
+  const config = getConfig()
+  const finalTitle = title || config.installInfo.title || defaultTitle
   document.title = finalTitle
   
   // 同时更新meta标签（如果需要）

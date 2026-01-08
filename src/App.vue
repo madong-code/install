@@ -93,8 +93,10 @@ import EnvironmentStep from "./components/environment-step.vue";
 import DatabaseStep from "./components/database-step.vue";
 import ConfigStep from "./components/config-step.vue";
 import CompleteStep from "./components/complete-step.vue";
-import { initConfig, publicConfig } from "./utils/config";
+import { initConfig, getConfig } from "./utils/config";
 import { p } from "vue-router/dist/router-CWoNjPRp.mjs";
+
+
 
 const currentStep = ref(1);
 const installData = reactive({
@@ -116,10 +118,10 @@ const siteInfo = ref({
 
 // 动态设置页面标题
 function setDocumentTitle(title?: string) {
+  const config = getConfig() // 动态获取配置
   const defaultTitle = 'MDAdmin 安装向导'
-  const finalTitle = title || publicConfig.installInfo.title || defaultTitle
+  const finalTitle = title || config.installInfo.title || defaultTitle
   document.title = finalTitle
- console.log(publicConfig.installInfo.title)
 }
 
 
@@ -127,9 +129,11 @@ function setDocumentTitle(title?: string) {
 onMounted(async () => {
   // 初始化配置
   await initConfig();
-  logoUrl.value=  publicConfig.siteInfo.logo||'./logo.png'
-  siteInfo.value = publicConfig.siteInfo;
-  setDocumentTitle(publicConfig.installInfo.title)
+  await installStore.fetchInstallationStatus();
+  const config= getConfig()
+  logoUrl.value=  config.siteInfo.logo||'./logo.png'
+  siteInfo.value = config.siteInfo;
+  setDocumentTitle(config.installInfo.title)
 
   if (installStore.checkInstallationStatus()) {
     currentStep.value = 5; // 如果已安装，直接跳转到完成页面
@@ -163,7 +167,7 @@ watch(
       // 安装完成后跳转到完成页面
       setTimeout(() => {
         handleNextStep();
-      }, 1000);
+      }, 5000);
     }
   }
 );

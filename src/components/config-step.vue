@@ -57,16 +57,20 @@
         <el-icon><ArrowLeft /></el-icon>
         上一步
       </el-button>
+ 
+        
+
       <el-button 
         type="primary" 
-        :loading="installing"
+        :loading="installStatus === 'installing'"
         @click="startInstallation"
         class="flat-button primary"
-        :disabled="installing && installStatus !== 'idle'"
+        :disabled="installStatus !== 'idle'"
       >
         <el-icon><VideoPlay /></el-icon>
         {{ installing ? '安装中...' : '开始安装' }}
       </el-button>
+
     </div>
   </div>
 </template>
@@ -76,9 +80,13 @@ import { ref, reactive, computed, onUnmounted } from 'vue'
 import { ArrowLeft, VideoPlay } from '@element-plus/icons-vue'
 import { useInstallStore } from '@/store/module/install'
 import type { FormInstance, FormRules } from 'element-plus'
+import { f } from 'vue-router/dist/router-CWoNjPRp.mjs'
 
 const installStore = useInstallStore()
 const formRef = ref<FormInstance>()
+
+  
+
 const installing = ref(false)
 
 // 使用store中的管理员配置数据
@@ -92,7 +100,7 @@ const formData = reactive({
 
 // 安装相关数据
 const installProgress = computed(() => installStore.install_progress)
-const installStatus = computed(() => installStore.install_status)
+const installStatus = computed(() => installStore.install_status) 
 const installLogs = computed(() => installStore.install_logs)
 
 const validateConfirmPassword = (rule: any, value: any, callback: any) => {
@@ -127,11 +135,12 @@ const rules: FormRules = {
 
 
 const startInstallation = async () => {
+  installing.value = true
   if (formRef.value) {
     try {
       await formRef.value.validate()
-      installing.value = true
       
+    
       // 保存配置到store
       installStore.updateAdminConfig({
         username: formData.username,
@@ -140,16 +149,14 @@ const startInstallation = async () => {
         site_name: formData.siteName
       })
       
-      // 开始模拟安装
       await installStore.simulateInstallation()
-      
-      // 不再手动触发跳转，由App.vue监听安装状态自动跳转
+    
     } catch (error) {
-      console.error('表单验证失败:', error)
       installing.value = false
     }
   }
 }
+
 
 // 清理
 onUnmounted(() => {

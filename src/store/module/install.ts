@@ -1,3 +1,5 @@
+import { installApi } from '@/api/install'
+import { getConfig } from '@/utils/config'
 import { defineStore } from 'pinia'
 
 export interface AgreementData {
@@ -9,12 +11,29 @@ export interface AgreementData {
 
 export interface EnvironmentCheckItem {
   name: string
+  need: string
   required: string
   current: string
-  status: 'success' | 'warning' | 'danger'|'error'
+  status: boolean
   status_text: string
   message: string
   is_required: boolean
+}
+
+// 目录权限检查结果
+export interface DirectoryPermissionCheckResult {
+  path: string
+  path_name: string
+  name: string
+  required: boolean
+  permission_type: 'read_only' | 'write_only' | 'read_write'
+  description: string
+  exists: boolean
+  is_readable: boolean
+  is_writable: boolean
+  status: boolean
+  status_text: string
+  message: string
 }
 
 export interface DatabaseConfig {
@@ -40,6 +59,7 @@ export const useInstallStore = defineStore('install', {
     // 环境检测数据
     environmentData: {
       check_items: [] as EnvironmentCheckItem[],
+      directory_check_items: [] as DirectoryPermissionCheckResult[],
       passed: false,
       loading: false
     },
@@ -48,7 +68,7 @@ export const useInstallStore = defineStore('install', {
       host: 'localhost',
       port: 3306,
       username: 'root',
-      password: '',
+      password: 'root',
       database: 'madong',
       prefix: 'md_'
     } as DatabaseConfig,
@@ -56,7 +76,7 @@ export const useInstallStore = defineStore('install', {
     adminConfig: {
       username: 'admin',
       password: '123456',
-      email: 'admin@madong.tech',
+      email: '405784684@qq.com',
       site_name: 'Madong管理系统'
     } as AdminConfig,
     // 安装进度
@@ -103,7 +123,7 @@ export const useInstallStore = defineStore('install', {
       if (state.environmentData.check_items.length === 0) return false
 
       const hasRequiredError = state.environmentData.check_items.some(
-        item => item.is_required && item.status === 'error'
+        item => item.is_required && item.status === false
       )
 
       return !hasRequiredError
@@ -113,6 +133,7 @@ export const useInstallStore = defineStore('install', {
     environmentCheckItems: (state) => {
       return state.environmentData.check_items.map(item => ({
         name: item.name,
+        need: item.need,
         required: item.required,
         current: item.current,
         status: item.status,
@@ -120,118 +141,168 @@ export const useInstallStore = defineStore('install', {
         message: item.message,
         isRequired: item.is_required
       }))
+    },
+    // 目录权限检查项（前端使用的数据格式）
+    directoryCheckItems: (state) => {
+      return state.environmentData.directory_check_items.map(item => ({
+        path: item.path,
+        pathName: item.path_name,
+        name: item.name,
+        required: item.required,
+        permissionType: item.permission_type,
+        description: item.description,
+        exists: item.exists,
+        isReadable: item.is_readable,
+        isWritable: item.is_writable,
+        status: item.status,
+        statusText: item.status_text,
+        message: item.message
+      }))
     }
   },
 
   actions: {
+    // 检查安装状态
+    async fetchInstallationStatus() {
+      const res = await installApi.checkInstall()
+      this.installation_completed = res.data?.installed || false
+      return res.data?.installation_completed || false
+    },
+
     // 模拟获取协议数据（后端格式）
     async fetchAgreementData() {
-      const mockAgreementData: AgreementData = {
-        title: 'Madong 管理系统许可协议',
-        version: 'v1.0.0',
-        update_time: '2024-01-01',
-        content: `
-          <p>欢迎使用 Madong 管理系统！</p>
-          <p>在安装和使用本系统前，请仔细阅读以下协议：</p>
-          <h3>1. 许可范围</h3>
-          <p>本系统采用开源协议，允许个人和企业免费使用。</p>
-          <h3>2. 使用限制</h3>
-          <p>禁止用于非法用途，禁止恶意攻击系统。</p>
-          <h3>3. 技术支持</h3>
-          <p>官方提供技术支持和文档服务。</p>
-          <h3>4. 免责声明</h3>
-          <p>使用本系统产生的风险由用户自行承担。</p>
-        `
-      }
-      this.agreementData = mockAgreementData
-      return mockAgreementData
+      const res = await installApi.getAgreement()
+      this.agreementData = res.data || {}
+      return res.data || {}
     },
 
-    // 模拟环境检测（后端格式）
+    // 模拟环境检测
     async checkEnvironment() {
       this.environmentData.loading = true
+      const res = await installApi.environment()
+      this.environmentData.check_items = res.data?.check_items || []
+      this.environmentData.directory_check_items = res.data?.directory_check_items || []
+      this.environmentData.loading = false
+      console.log(this.environmentData.loading)
 
-      // 模拟异步检测
-      return new Promise<void>((resolve) => {
-        setTimeout(() => {
-          this.environmentData.check_items = [
-            {
-              name: 'PHP版本',
-              required: '>= 7.4',
-              current: '8.1.0',
-              status: 'success',
-              status_text: '通过',
-              message: 'PHP版本符合要求',
-              is_required: true
-            },
-            {
-              name: 'MySQL扩展',
-              required: '已安装',
-              current: '已安装',
-              status: 'success',
-              status_text: '通过',
-              message: 'MySQL扩展已安装',
-              is_required: true
-            },
-            {
-              name: '文件权限',
-              required: '可写',
-              current: '可写',
-              status: 'success',
-              status_text: '通过',
-              message: '文件权限设置正确',
-              is_required: true
-            },
-            {
-              name: 'GD库',
-              required: '已安装',
-              current: '已安装',
-              status: 'success',
-              status_text: '通过',
-              message: 'GD库已安装',
-              is_required: false
-            },
-            {
-              name: '内存限制',
-              required: '>= 128M',
-              current: '256M',
-              status: 'success',
-              status_text: '通过',
-              message: '内存限制设置正确',
-              is_required: false
-            }
-          ]
-
-          this.environmentData.passed = this.environmentPassed
-          this.environmentData.loading = false
-          resolve()
-        }, 1500)
-      })
     },
 
-    // 模拟SSE安装进度
+    
     async simulateInstallation() {
-      this.startInstall()
+      try {
+        // 开始安装
+        this.startInstall()
 
-      const steps = [
-        { progress: 10, log: '检查安装环境...' },
-        { progress: 20, log: '创建数据库表结构...' },
-        { progress: 40, log: '导入基础数据...' },
-        { progress: 60, log: '配置管理员账户...' },
-        { progress: 80, log: '初始化系统设置...' },
-        { progress: 90, log: '清理临时文件...' },
-        { progress: 100, log: '安装完成!' }
-      ]
+        const config = getConfig()
+        const params = new URLSearchParams()
 
-      for (const step of steps) {
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        this.updateProgress(step.progress, step.log)
+        // 数据库配置参数
+        params.append('db_host', this.databaseConfig.host || '')
+        params.append('db_port', this.databaseConfig.port?.toString() || '')
+        params.append('db_database', this.databaseConfig.database || '')
+        params.append('db_username', this.databaseConfig.username || '')
+        params.append('db_password', this.databaseConfig.password || '')
+        params.append('db_prefix', this.databaseConfig.prefix || '')
 
-        // 模拟控制台输出
-        console.log(`[${new Date().toLocaleTimeString()}] ${step.log}`)
+        // 管理员配置参数
+        params.append('admin_username', this.adminConfig.username || '')
+        params.append('admin_password', this.adminConfig.password || '')
+        params.append('admin_email', this.adminConfig.email || '')
+        params.append('site_name', this.adminConfig.site_name || '')
+
+        // 拼接完整的 SSE URL
+        const sseUrl = `${config.apiBaseUrl}/install?${params.toString()}`.replace('//', '/')
+
+        // 返回 Promise 以便外部可以等待安装完成
+        return new Promise((resolve, reject) => {
+          const eventSource = new EventSource(sseUrl)
+
+          // 监听 progress 事件
+          eventSource.addEventListener('progress', (event) => {
+            try {
+              const response = JSON.parse((event as MessageEvent).data)
+              const data = response.data || {}
+
+              console.log('进度消息:', response)
+
+              // 更新进度和日志
+              if (data.progress !== undefined) {
+                this.updateProgress(data.progress, data.message || '安装进行中...')
+              } else {
+                // 如果没有进度值，只记录消息
+                this.install_logs.push(`[${new Date().toLocaleTimeString()}] ${data.message || '安装进行中...'}`)
+              }
+            } catch (error) {
+              console.error('解析进度消息失败:', error)
+            }
+          })
+
+          // 监听 runtime_error 事件
+          eventSource.addEventListener('runtime_error', (event) => {
+            try {
+              const response = JSON.parse((event as MessageEvent).data)
+              const data = response.data || {}
+              if (data.status === 'error') {
+                this.updateProgress(100, data.message || '安装异常...')
+              }
+              this.installFailed(data.message || '安装异常...')
+              eventSource.close()
+              resolve(response)
+            } catch (error) {
+              eventSource.close()
+              console.error('解析进度消息失败:', error)
+            }
+          })
+
+          // 监听 completed 事件
+          eventSource.addEventListener('completed', (event) => {
+            try {
+              const response = JSON.parse((event as MessageEvent).data)
+              const data = response.data || {}
+              this.installComplete()
+              eventSource.close()
+              resolve(response)
+            } catch (error) {
+              console.error('解析完成消息失败:', error)
+              eventSource.close()
+              reject(error)
+            }
+          })
+
+          // 监听通用的 message 事件
+          eventSource.onmessage = (event) => {
+            try {
+              const response = JSON.parse(event.data)
+              const data = response.data || {}
+              const message = data.message || response.message || '安装进行中...'
+              this.install_logs.push(`[${new Date().toLocaleTimeString()}] ${message}`)
+            } catch (error) {
+              console.error('解析通用消息失败:', error)
+            }
+          }
+
+
+          // 设置超时处理（5分钟）
+          const timeout = setTimeout(() => {
+            if (eventSource.readyState !== EventSource.CLOSED) {
+              console.warn('SSE 连接超时')
+              this.installFailed('安装超时')
+              eventSource.close()
+              reject(new Error('安装超时'))
+            }
+          }, 300000)
+
+          // 清理超时定时器
+          eventSource.addEventListener('completed', () => {
+            clearTimeout(timeout)
+          })
+        })
+
+      } catch (error) {
+        console.error('安装初始化失败:', error)
+        this.installFailed('安装初始化失败')
+        throw error
       }
-
-      this.installComplete()
     },
 
     // 更新数据库配置
@@ -280,7 +351,6 @@ export const useInstallStore = defineStore('install', {
     },
     // 检查安装状态
     checkInstallationStatus() {
-      // 这里可以添加从后端检查安装状态的逻辑
       return this.installation_completed
     },
 

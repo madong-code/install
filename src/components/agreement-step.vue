@@ -31,7 +31,7 @@
 import { ref, onMounted, computed } from 'vue'
 import {  ArrowRight } from '@element-plus/icons-vue'
 import { useInstallStore } from '@/store/module/install'
-import { publicConfig } from '@/utils/config'
+
 
 const installStore = useInstallStore()
 const loading = ref(false)
@@ -113,13 +113,13 @@ const emit = defineEmits<{
       }
       
       .agreement-body {
-        max-height: 400px;
+        // max-height: 400px;
         overflow-y: hidden;
         padding: 20px;
-        background: #f8f9fa;
-        border-radius: 4px;
+        // background: #f8f9fa;
+        // border-radius: 4px;
         line-height: 1.6;
-        transition: overflow-y 0.3s ease;
+        // transition: overflow-y 0.3s ease;
         
         &:hover {
           overflow-y: auto;

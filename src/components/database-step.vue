@@ -69,7 +69,8 @@ import { ref, reactive, onMounted, computed } from "vue";
 import { DataBoard, ArrowLeft, ArrowRight, Connection } from "@element-plus/icons-vue";
 import { useInstallStore } from "@/store/module/install";
 import type { FormInstance, FormRules } from "element-plus";
-import { publicConfig } from "@/utils/config";
+import installApi from "@/api/install";
+
 
 const installStore = useInstallStore();
 const formRef = ref<FormInstance>();
@@ -106,19 +107,23 @@ const rules: FormRules = {
 const testConnection = async () => {
   testing.value = true;
   testResult.value = null;
-
-  // 模拟连接测试
-  setTimeout(() => {
+  installApi.testDatabase(formData).then((res) => {
+    if (res.code === 0) {
+      testResult.value = {
+        title: "连接成功",
+        type: "success",
+        description: "数据库连接测试通过，可以继续安装",
+      };
+    } else {
+      testResult.value = {
+        title: "连接失败",
+        type: "error",
+        description: res.msg || "数据库连接测试失败，请检查配置",
+      };
+    }
+  }).finally(() => {
     testing.value = false;
-    testResult.value = {
-      title: "连接成功",
-      type: "success",
-      description: "数据库连接测试通过，可以继续安装",
-    };
-
-    // 更新store中的配置
-    installStore.updateDatabaseConfig(formData);
-  }, 1000);
+  })
 };
 
 const handleNext = async () => {

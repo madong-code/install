@@ -48,7 +48,7 @@ import {
   SuccessFilled, Monitor, ChatDotRound, House, Setting 
 } from '@element-plus/icons-vue'
 import { useInstallStore } from '@/store/module/install'
-import { publicConfig } from '@/utils/config'
+import { getConfig } from '@/utils/config'
 
 const installStore = useInstallStore()
 
@@ -80,8 +80,9 @@ onMounted(() => {
   if (typeof window !== 'undefined') {
     currentOrigin.value = window.location.origin
   }
-  // 设置配置信息
-  siteInfo.value = publicConfig.siteInfo
+  // 动态获取配置信息
+  const config = getConfig()
+  siteInfo.value = config.siteInfo
 })
 
 const goToAdmin = () => {

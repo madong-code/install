@@ -2,7 +2,7 @@ import axios from 'axios'
 
 // 默认配置
 const defaultConfig = {
-  apiBaseUrl: '/api',
+  apiBaseUrl: '/adminapi',
   installInfo: {
     title: 'Madong 管理系统安装向导',
     version: '1.0.0',
@@ -122,4 +122,8 @@ export function getAbsolutePath(relativePath: string) {
   return basePath ? `/${basePath}/${relativePath}` : `/${relativePath}`
 }
 
-export { publicConfig }
+// export { publicConfig }
+// 获取当前配置的函数
+export function getConfig() {
+  return publicConfig
+}
