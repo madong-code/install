@@ -31,7 +31,7 @@
           <el-alert
             title="安全提示"
             type="warning"
-            description="为了系统安全，建议您删除 install 目录或设置访问权限"
+            description="为了系统安全，建议您删除 app/install目录或设置访问权限,如需重新安装,请删除 install.lock 跟config/database.php文件"
             show-icon
             :closable="false"
             class="flat-alert"

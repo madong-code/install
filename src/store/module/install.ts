@@ -282,7 +282,7 @@ export const useInstallStore = defineStore('install', {
           }
 
 
-          // 设置超时处理（5分钟）
+          // 设置超时处理（10分钟）
           const timeout = setTimeout(() => {
             if (eventSource.readyState !== EventSource.CLOSED) {
               console.warn('SSE 连接超时')
@@ -290,7 +290,7 @@ export const useInstallStore = defineStore('install', {
               eventSource.close()
               reject(new Error('安装超时'))
             }
-          }, 300000)
+          }, 1000000)
 
           // 清理超时定时器
           eventSource.addEventListener('completed', () => {
