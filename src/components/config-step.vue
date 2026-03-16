@@ -21,7 +21,10 @@
             安装进度: {{ installProgress }}%
             <span v-if="installStatus === 'success'" class="success-text">✓ 安装完成</span>
             <span v-else-if="installStatus === 'error'" class="error-text">✗ 安装失败</span>
-            <span v-else class="installing-text">● 安装中...</span>
+            <span v-else class="installing-text">
+              <el-icon class="loading-icon"><Loading /></el-icon>
+              安装中...
+            </span>
           </div>
         </div>
       </div>
@@ -47,6 +50,14 @@
           
           <el-form-item label="网站名称" prop="siteName">
             <el-input v-model="formData.siteName" placeholder="Madong管理系统" class="flat-input" />
+          </el-form-item>
+          
+          <el-form-item label="是否安装数据库" prop="installDatabase">
+            <el-switch v-model="formData.installDatabase" />
+          </el-form-item>
+          
+          <el-form-item label="是否构建打包" prop="buildProject">
+            <el-switch v-model="formData.buildProject" />
           </el-form-item>
         </el-form>
       </div>
@@ -77,7 +88,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onUnmounted } from 'vue'
-import { ArrowLeft, VideoPlay } from '@element-plus/icons-vue'
+import { ArrowLeft, VideoPlay, Loading } from '@element-plus/icons-vue'
 import { useInstallStore } from '@/store/module/install'
 import type { FormInstance, FormRules } from 'element-plus'
 import { f } from 'vue-router/dist/router-CWoNjPRp.mjs'
@@ -95,7 +106,9 @@ const formData = reactive({
   password: installStore.adminConfig.password,
   confirmPassword: installStore.adminConfig.password,
   email: installStore.adminConfig.email,
-  siteName: installStore.adminConfig.site_name
+  siteName: installStore.adminConfig.site_name,
+  installDatabase: installStore.adminConfig.install_database,
+  buildProject: installStore.adminConfig.build_project
 })
 
 // 安装相关数据
@@ -146,7 +159,9 @@ const startInstallation = async () => {
         username: formData.username,
         password: formData.password,
         email: formData.email,
-        site_name: formData.siteName
+        site_name: formData.siteName,
+        install_database: formData.installDatabase,
+        build_project: formData.buildProject
       })
       
       await installStore.simulateInstallation()
@@ -259,6 +274,18 @@ const emit = defineEmits<{
         .installing-text {
           color: #409eff;
           margin-left: 10px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          
+          .loading-icon {
+            animation: rotate 1s linear infinite;
+          }
+          
+          @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
         }
       }
     }

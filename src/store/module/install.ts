@@ -50,6 +50,8 @@ export interface AdminConfig {
   password: string
   email: string
   site_name: string
+  install_database: boolean
+  build_project: boolean
 }
 
 export const useInstallStore = defineStore('install', {
@@ -77,7 +79,9 @@ export const useInstallStore = defineStore('install', {
       username: 'admin',
       password: '123456',
       email: '405784684@qq.com',
-      site_name: 'Madong管理系统'
+      site_name: 'Madong管理系统',
+      install_database: true,
+      build_project: true
     } as AdminConfig,
     // 安装进度
     install_progress: 0,
@@ -209,6 +213,8 @@ export const useInstallStore = defineStore('install', {
         params.append('admin_password', this.adminConfig.password || '')
         params.append('admin_email', this.adminConfig.email || '')
         params.append('site_name', this.adminConfig.site_name || '')
+        params.append('install_database', this.adminConfig.install_database ? '1' : '0')
+        params.append('build_project', this.adminConfig.build_project ? '1' : '0')
 
         // 拼接完整的 SSE URL
         const sseUrl = `${config.apiBaseUrl}/install?${params.toString()}`.replace('//', '/')
