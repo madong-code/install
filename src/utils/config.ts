@@ -4,16 +4,16 @@ import axios from 'axios'
 const defaultConfig = {
   apiBaseUrl: '/adminapi',
   installInfo: {
-    title: 'Madong 管理系统安装向导',
+    title: 'MD-Admin 安装向导',
     version: '1.0.0',
-    description: '快速开发通用管理后台框架'
+    description: '极速后台开发框架'
   },
   siteInfo: {
-    logo: './logo.png',
-    name: 'Madong 管理系统',
+    logo: '@/logo.png',
+    name: 'MD-Admin 极速后台开发框架',
     officialWebsite: 'https://madong.tech',
-    community: 'https://madong.tech/question/',
-    documentation: 'https://madong.tech/doc',
+    community: 'https://madong.tech/ask',
+    documentation: 'https://madong.tech/docs',
     frontendUrl: '/',
     backendUrl: '/admin',
     configUrl: '/admin#/system/config'
