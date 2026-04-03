@@ -6,7 +6,7 @@
         <div class="logo-section">
           <el-image :src="logoUrl" class="logo" fit="contain" />
           <span class="logo-text">{{
-            siteInfo.name || "Madong快速开发通用管理后台框架"
+            siteInfo.name || "MD-Admin 极速后台开发框架"
           }}</span>
         </div>
         <div class="nav-links">
@@ -107,7 +107,7 @@ const installData = reactive({
 });
 
 const installStore = useInstallStore();
-const logoUrl = ref("./logo.png");
+const logoUrl = ref("./public/logo.png");
 const siteInfo = ref({
   name: "",
   officialWebsite: "",

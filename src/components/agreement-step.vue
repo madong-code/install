@@ -1,27 +1,54 @@
 <template>
   <div class="agreement-step">
     <div class="step-content">
-      <div class="agreement-content" v-loading="loading">
-        <div v-if="agreementData" class="agreement-text">
-          <div class="agreement-body" @mouseenter="showScrollbar" @mouseleave="hideScrollbar">
-            <div v-html="agreementData.content"></div>
-          </div>
-        </div>
-        <div v-else class="agreement-empty">
-          <el-empty description="协议加载失败" />
-        </div>
-
-        <div class="agreement-actions">
-          <el-checkbox v-model="agreed" :disabled="!agreementData">
-            我已阅读并同意以上协议
-          </el-checkbox>
-        </div>
+      <div class="check-status" v-loading="loading">
+        <el-result
+          icon="info"
+          title="安装状态检测"
+          sub-title="正在检测系统安装状态..."
+        >
+          <template #extra>
+            <el-card class="status-card" shadow="hover">
+              <div class="status-item">
+                <span class="status-label">安装状态：</span>
+                <el-tag :type="isInstalled ? 'success' : 'warning'" size="large">
+                  {{ isInstalled ? '已安装' : '未安装' }}
+                </el-tag>
+              </div>
+              <div class="status-item" v-if="installStatus">
+                <span class="status-label">安装时间：</span>
+                <span class="status-value">{{ installStatus }}</span>
+              </div>
+              <div class="status-item" v-if="!isInstalled">
+                <el-alert
+                  title="系统未安装，将引导您完成安装"
+                  type="info"
+                  :closable="false"
+                  show-icon
+                />
+              </div>
+            </el-card>
+          </template>
+        </el-result>
       </div>
     </div>
 
     <div class="step-actions">
-      <el-button type="primary" :disabled="!agreed" @click="handleAgree" class="flat-button primary">
-        同意并继续 <el-icon><ArrowRight /></el-icon>
+      <el-button 
+        v-if="!isInstalled" 
+        type="primary" 
+        @click="handleContinue" 
+        class="flat-button primary"
+      >
+        开始安装 <el-icon><ArrowRight /></el-icon>
+      </el-button>
+      <el-button 
+        v-else 
+        type="primary" 
+        @click="handleGoToAdmin" 
+        class="flat-button primary"
+      >
+        访问后台 <el-icon><ArrowRight /></el-icon>
       </el-button>
     </div>
   </div>
@@ -29,47 +56,39 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import {  ArrowRight } from '@element-plus/icons-vue'
+import { ArrowRight } from '@element-plus/icons-vue'
 import { useInstallStore } from '@/store/module/install'
-
 
 const installStore = useInstallStore()
 const loading = ref(false)
-const agreed = ref(false)
+const installStatus = ref('') as any
 
-// 使用store中的协议数据
-const agreementData = computed(() => installStore.agreementData)
+// 使用store中的安装状态
+const isInstalled = computed(() => installStore.checkInstallationStatus())
 
 onMounted(async () => {
-  await loadAgreement()
+  await checkInstallStatus()
 })
 
-const loadAgreement = async () => {
+const checkInstallStatus = async () => {
   try {
     loading.value = true
-    // 从store获取模拟数据
-    await installStore.fetchAgreementData()
+    await installStore.fetchInstallationStatus()
+    // 从 store 获取安装时间
+    installStatus.value = installStore.install_end_time || ''
   } catch (error) {
-    console.error('加载协议失败:', error)
+    console.error('检测安装状态失败:', error)
   } finally {
     loading.value = false
   }
 }
 
-const showScrollbar = (event: Event) => {
-  const target = event.target as HTMLElement
-  target.style.overflowY = 'auto'
+const handleContinue = () => {
+  emit('next')
 }
 
-const hideScrollbar = (event: Event) => {
-  const target = event.target as HTMLElement
-  target.style.overflowY = 'hidden'
-}
-
-const handleAgree = () => {
-  if (agreed.value) {
-    emit('next')
-  }
+const handleGoToAdmin = () => {
+  window.location.href = '/admin'
 }
 
 const emit = defineEmits<{
@@ -82,66 +101,34 @@ const emit = defineEmits<{
   .step-content {
     min-height: 400px;
     
-    .step-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 18px;
-      font-weight: 600;
-      color: #303133;
-      margin-bottom: 24px;
-      padding-bottom: 16px;
-      border-bottom: 1px solid #e4e7ed;
-    }
-  }
-
-  .agreement-content {
-    .agreement-text {
-      h2 {
-        margin-bottom: 16px;
-        color: #409eff;
-        text-align: center;
-      }
-      
-      .agreement-meta {
-        display: flex;
-        gap: 20px;
-        margin-bottom: 20px;
-        color: #666;
-        font-size: 14px;
-        justify-content: center;
-      }
-      
-      .agreement-body {
-        // max-height: 400px;
-        overflow-y: hidden;
-        padding: 20px;
-        // background: #f8f9fa;
-        // border-radius: 4px;
-        line-height: 1.6;
-        // transition: overflow-y 0.3s ease;
-        
-        &:hover {
-          overflow-y: auto;
-        }
-        
-        h3 {
-          margin: 16px 0 8px 0;
-          color: #333;
-        }
-        
-        p {
-          margin-bottom: 12px;
-        }
-      }
+    .check-status {
+      padding: 20px;
     }
     
-    .agreement-actions {
-      margin-top: 20px;
-      padding: 20px;
-      background: #f0f7ff;
-      border-radius: 4px;
-      text-align: center;
+    .status-card {
+      max-width: 400px;
+      margin: 0 auto;
+      
+      .status-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 0;
+        border-bottom: 1px solid #ebeef5;
+        
+        &:last-child {
+          border-bottom: none;
+        }
+        
+        .status-label {
+          font-weight: 500;
+          color: #606266;
+        }
+        
+        .status-value {
+          color: #909399;
+        }
+      }
     }
   }
 

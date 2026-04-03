@@ -7,7 +7,7 @@ import { initConfig, getConfig } from './utils/config'
 
 // 动态设置页面标题
 function setDocumentTitle(title?: string) {
-  const defaultTitle = 'MDAdmin 安装向导'
+  const defaultTitle = 'MD-Admin 安装向导'
   const config = getConfig()
   const finalTitle = title || config.installInfo.title || defaultTitle
   document.title = finalTitle
