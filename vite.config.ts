@@ -34,15 +34,23 @@ export default ({ mode }: { mode: string }) => {
         '@': resolve(__dirname, 'src')
       }
     },
+    css: {
+      preprocessorOptions: {
+        scss: {
+          api: 'modern-compiler',
+        },
+      },
+    },
     server: {
       port: Number(VITE_PORT),
-      proxy: {
-        '/adminapi': {
-          target: VITE_API_PROXY_URL,
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/adminapi/, '/adminapi')
+      ...(VITE_API_PROXY_URL ? {
+        proxy: {
+          '/adminapi': {
+            target: VITE_API_PROXY_URL,
+            changeOrigin: true,
+          }
         }
-      },
+      } : {}),
       host: true
     },
     base: VITE_BASE_URL,
@@ -50,13 +58,8 @@ export default ({ mode }: { mode: string }) => {
       outDir: 'dist',
       assetsDir: 'assets',
       sourcemap: false,
-      // 确保配置文件被正确复制
-      rollupOptions: {
-        external: [],
-        output: {
-          manualChunks: undefined
-        }
-      }
+      // Element Plus 体积较大，提高警告阈值
+      chunkSizeWarningLimit: 1500,
     },
     // 确保 public 目录下的文件被复制到输出目录
     publicDir: 'public'

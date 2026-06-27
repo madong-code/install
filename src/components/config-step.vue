@@ -1,106 +1,15 @@
-<template>
-  <div class="config-step">
-    <div class="step-content">
-      <!-- 安装进度显示 -->
-      <div v-if="installing" class="install-progress">
-        <div class="console-output">
-          <div class="console-logs">
-            <div v-for="(log, index) in installLogs" :key="index" class="log-line">
-              <span class="timestamp">{{ log.split(']')[0] }}]</span>
-              <span class="message">{{ log.split(']')[1] }}</span>
-            </div>
-          </div>
-        </div>
-        <div class="progress-section">
-          <el-progress 
-            :percentage="installProgress" 
-            :status="installStatus === 'error' ? 'exception' : installStatus === 'success' ? 'success' : undefined"
-            :stroke-width="6"
-          />
-          <div class="progress-text">
-            安装进度: {{ installProgress }}%
-            <span v-if="installStatus === 'success'" class="success-text">✓ 安装完成</span>
-            <span v-else-if="installStatus === 'error'" class="error-text">✗ 安装失败</span>
-            <span v-else class="installing-text">
-              <el-icon class="loading-icon"><Loading /></el-icon>
-              安装中...
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <!-- 配置表单（安装前显示） -->
-      <div v-else class="config-form">
-        <el-form :model="formData" :rules="rules" ref="formRef" label-width="120px" class="flat-form" label-position="left">
-          <el-form-item label="管理员账号" prop="username">
-            <el-input v-model="formData.username" placeholder="admin" class="flat-input" />
-          </el-form-item>
-          
-          <el-form-item label="管理员密码" prop="password">
-            <el-input v-model="formData.password" type="password" placeholder="请输入密码" show-password class="flat-input" />
-          </el-form-item>
-          
-          <el-form-item label="确认密码" prop="confirmPassword">
-            <el-input v-model="formData.confirmPassword" type="password" placeholder="请再次输入密码" show-password class="flat-input" />
-          </el-form-item>
-          
-          <el-form-item label="邮箱地址" prop="email">
-            <el-input v-model="formData.email" placeholder="admin@madong.tech" class="flat-input" />
-          </el-form-item>
-          
-          <el-form-item label="网站名称" prop="siteName">
-            <el-input v-model="formData.siteName" placeholder="Madong管理系统" class="flat-input" />
-          </el-form-item>
-          
-          <el-form-item label="是否安装数据库" prop="installDatabase">
-            <el-switch v-model="formData.installDatabase" />
-          </el-form-item>
-          
-          <el-form-item label="是否构建打包" prop="buildProject">
-            <el-switch v-model="formData.buildProject" />
-          </el-form-item>
-        </el-form>
-      </div>
-    </div>
-
-    <div class="step-actions">
-      <el-button @click="$emit('prev')" class="flat-button">
-        <el-icon><ArrowLeft /></el-icon>
-        上一步
-      </el-button>
- 
-        
-
-      <el-button 
-        type="primary" 
-        :loading="installStatus === 'installing'"
-        @click="startInstallation"
-        class="flat-button primary"
-        :disabled="installStatus !== 'idle'"
-      >
-        <el-icon><VideoPlay /></el-icon>
-        {{ installing ? '安装中...' : '开始安装' }}
-      </el-button>
-
-    </div>
-  </div>
-</template>
-
 <script setup lang="ts">
-import { ref, reactive, computed, onUnmounted } from 'vue'
-import { ArrowLeft, VideoPlay, Loading } from '@element-plus/icons-vue'
-import { useInstallStore } from '@/store/module/install'
-import type { FormInstance, FormRules } from 'element-plus'
-import { f } from 'vue-router/dist/router-CWoNjPRp.mjs'
+import type { FormInstance, FormRules } from 'element-plus';
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
+import { useInstallStore } from '@/store/module/install';
+import { ArrowLeft, Loading, Refresh, Setting, User, VideoPlay } from '@element-plus/icons-vue';
 
-const installStore = useInstallStore()
-const formRef = ref<FormInstance>()
+defineEmits<{ prev: [] }>();
+const installStore = useInstallStore();
+const formRef = ref<FormInstance>();
+const terminalRef = ref<HTMLElement>();
+const installing = ref(false);
 
-  
-
-const installing = ref(false)
-
-// 使用store中的管理员配置数据
 const formData = reactive({
   username: installStore.adminConfig.username,
   password: installStore.adminConfig.password,
@@ -108,223 +17,167 @@ const formData = reactive({
   email: installStore.adminConfig.email,
   siteName: installStore.adminConfig.site_name,
   installDatabase: installStore.adminConfig.install_database,
-  buildProject: installStore.adminConfig.build_project
-})
+  buildProject: installStore.adminConfig.build_project,
+});
 
-// 安装相关数据
-const installProgress = computed(() => installStore.install_progress)
-const installStatus = computed(() => installStore.install_status) 
-const installLogs = computed(() => installStore.install_logs)
+const installProgress = computed(() => installStore.install_progress);
+const installStatus = computed(() => installStore.install_status);
+const installLogs = computed(() => installStore.install_logs);
 
-const validateConfirmPassword = (rule: any, value: any, callback: any) => {
-  if (value !== formData.password) {
-    callback(new Error('两次输入的密码不一致'))
-  } else {
-    callback()
-  }
-}
+const scrollT = () => {
+  nextTick(() => { if (terminalRef.value) terminalRef.value.scrollTop = terminalRef.value.scrollHeight; });
+};
+onMounted(() => scrollT());
+watch(() => installLogs.value.length, () => scrollT());
 
 const rules: FormRules = {
-  username: [
-    { required: true, message: '请输入管理员账号', trigger: 'blur' },
-    { min: 3, max: 20, message: '长度在 3 到 20 个字符', trigger: 'blur' }
-  ],
-  password: [
-    { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 6, message: '密码长度不能少于6位', trigger: 'blur' }
-  ],
-  confirmPassword: [
-    { required: true, message: '请确认密码', trigger: 'blur' },
-    { validator: validateConfirmPassword, trigger: 'blur' }
-  ],
-  email: [
-    { required: true, message: '请输入邮箱地址', trigger: 'blur' },
-    { type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur' }
-  ],
-  siteName: [
-    { required: true, message: '请输入网站名称', trigger: 'blur' }
-  ]
-}
-
+  username: [{ required: true, trigger: 'blur' }, { min: 3, max: 20, message: '3~20个字符', trigger: 'blur' }],
+  password: [{ required: true, message: '请输入密码', trigger: 'blur' }, { min: 6, message: '密码不少于6位', trigger: 'blur' }],
+  confirmPassword: [{ required: true, message: '请确认密码', trigger: 'blur' }, { validator: (_, v, cb) => v === formData.password ? cb() : cb(new Error('密码不一致')), trigger: 'blur' }],
+  email: [{ required: true, trigger: 'blur' }, { type: 'email', message: '邮箱格式错误', trigger: 'blur' }],
+  siteName: [{ required: true, message: '请输入网站名称', trigger: 'blur' }],
+};
 
 const startInstallation = async () => {
-  installing.value = true
+  installing.value = true;
   if (formRef.value) {
     try {
-      await formRef.value.validate()
-      
-    
-      // 保存配置到store
+      await formRef.value.validate();
       installStore.updateAdminConfig({
         username: formData.username,
         password: formData.password,
         email: formData.email,
         site_name: formData.siteName,
         install_database: formData.installDatabase,
-        build_project: formData.buildProject
-      })
-      
-      await installStore.simulateInstallation()
-    
-    } catch (error) {
-      installing.value = false
+        build_project: formData.buildProject,
+      });
+      await installStore.simulateInstallation();
+    } catch {
+      if (installStore.install_status === 'idle') installing.value = false;
     }
   }
-}
+};
 
+const goBackForm = () => { installStore.resetInstall(); installing.value = false; };
+const retryInstallation = () => { installStore.resetInstall(); startInstallation(); };
 
-// 清理
-onUnmounted(() => {
-  if (installing.value) {
-    installStore.resetInstall()
-  }
-})
-
-const emit = defineEmits<{
-  prev: []
-  'start-install': [config: any]
-}>()
+onUnmounted(() => { if (installing.value) installStore.resetInstall(); });
 </script>
 
+<template>
+  <div class="config-step">
+    <!-- 安装进度 -->
+    <div v-if="installing" class="progress-view">
+      <div class="console-box">
+        <div class="console-bar">
+          <span class="cb-dot"></span><span class="cb-dot" style="background:#e6a23c"></span><span class="cb-dot" style="background:#67c23a"></span>
+          <span class="cb-title">安装进程</span>
+        </div>
+        <div class="console-body" ref="terminalRef">
+          <div v-for="(log, i) in installLogs" :key="i" class="cl-line">
+            <span class="cl-ts">{{ log.split(']')[0] }}]</span>
+            <span class="cl-msg">{{ log.split(']')[1] }}</span>
+          </div>
+          <div v-if="installStatus === 'installing'" class="cl-cursor">_</div>
+        </div>
+      </div>
+      <div class="progress-block">
+        <div class="pb-info">
+          <span>安装进度</span>
+          <span :class="installStatus === 'success' ? 'c-green' : installStatus === 'error' ? 'c-red' : 'c-blue'">
+            <template v-if="installStatus === 'installing'"><el-icon class="spin"><Loading /></el-icon> 安装中...</template>
+            <template v-else-if="installStatus === 'success'">✓ 完成</template>
+            <template v-else-if="installStatus === 'error'">✗ 失败</template>
+            <template v-else>{{ installProgress }}%</template>
+          </span>
+        </div>
+        <div class="pb-track">
+          <div class="pb-fill" :style="{ width: `${installProgress}%` }" :class="installStatus === 'success' ? 'f-green' : installStatus === 'error' ? 'f-red' : 'f-blue'"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 配置表单 -->
+    <div v-else class="config-form">
+      <div class="form-row">
+        <div class="form-card">
+          <div class="fc-title"><el-icon color="#409eff"><User /></el-icon> 管理员信息</div>
+          <el-form :model="formData" :rules="rules" ref="formRef" label-width="80px" class="inner-form">
+            <el-form-item label="账号" prop="username"><el-input v-model="formData.username" placeholder="admin" /></el-form-item>
+            <el-form-item label="密码" prop="password"><el-input v-model="formData.password" type="password" placeholder="至少6位" show-password /></el-form-item>
+            <el-form-item label="确认" prop="confirmPassword"><el-input v-model="formData.confirmPassword" type="password" placeholder="再次输入" show-password /></el-form-item>
+            <el-form-item label="邮箱" prop="email"><el-input v-model="formData.email" placeholder="admin@madong.tech" /></el-form-item>
+            <el-form-item label="网站" prop="siteName"><el-input v-model="formData.siteName" placeholder="Madong管理系统" /></el-form-item>
+          </el-form>
+        </div>
+        <div class="form-card">
+          <div class="fc-title"><el-icon color="#e6a23c"><Setting /></el-icon> 安装选项</div>
+          <div class="opt-list">
+            <label class="opt-item">
+              <span class="opt-text"><strong>安装数据库</strong><small>创建并导入数据表</small></span>
+              <el-switch v-model="formData.installDatabase" />
+            </label>
+            <label class="opt-item">
+              <span class="opt-text"><strong>构建打包</strong><small>编译前端资源</small></span>
+              <el-switch v-model="formData.buildProject" />
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 安装中/结果按钮 -->
+    <div v-if="installing" class="step-actions">
+      <button v-if="installStatus === 'error'" class="btn btn-ghost" @click="goBackForm"><el-icon><ArrowLeft /></el-icon> 返回表单</button>
+      <div v-else></div>
+      <div class="btn-group">
+        <button v-if="installStatus === 'error'" class="btn btn-warning" @click="retryInstallation"><el-icon><Refresh /></el-icon> 重试安装</button>
+      </div>
+    </div>
+
+    <!-- 表单按钮 -->
+    <div class="step-actions" v-if="!installing">
+      <button class="btn btn-ghost" @click="$emit('prev')"><el-icon><ArrowLeft /></el-icon> 上一步</button>
+      <button class="btn btn-primary" @click="startInstallation"><el-icon><VideoPlay /></el-icon> 开始安装</button>
+    </div>
+  </div>
+</template>
+
 <style lang="scss" scoped>
-.config-step {
-  .step-content {
-    min-height: 400px;
-    
-    .step-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 18px;
-      font-weight: 600;
-      color: #303133;
-      margin-bottom: 24px;
-      padding-bottom: 16px;
-      border-bottom: 1px solid #e4e7ed;
-    }
-  }
-
-  .config-form {
-    .flat-form {
-      .el-form-item {
-        margin-bottom: 20px;
-        
-        .el-form-item__label {
-          font-weight: 500;
-          color: #606266;
-        }
-      }
-    }
-  }
-
-  .install-progress {
-    .console-output {
-      margin-bottom: 20px;
-      
-      h4 {
-        margin-bottom: 10px;
-        color: #303133;
-        font-size: 14px;
-      }
-      
-      .console-logs {
-        background: #1e1e1e;
-        color: #d4d4d4;
-        padding: 15px;
-        border-radius: 4px;
-        font-family: 'Courier New', monospace;
-        font-size: 12px;
-        max-height: 300px;
-        overflow-y: auto;
-        
-        .log-line {
-          line-height: 1.5;
-          margin-bottom: 4px;
-          display: flex;
-          
-          .timestamp {
-            color: #6a9955;
-            margin-right: 8px;
-          }
-          
-          .message {
-            color: #d4d4d4;
-          }
-        }
-      }
-    }
-    
-    .progress-section {
-      .progress-text {
-        margin-top: 10px;
-        text-align: center;
-        color: #606266;
-        font-size: 14px;
-        
-        .success-text {
-          color: #67c23a;
-          margin-left: 10px;
-        }
-        
-        .error-text {
-          color: #f56c6c;
-          margin-left: 10px;
-        }
-        
-        .installing-text {
-          color: #409eff;
-          margin-left: 10px;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          
-          .loading-icon {
-            animation: rotate 1s linear infinite;
-          }
-          
-          @keyframes rotate {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-          }
-        }
-      }
-    }
-  }
-
-  .step-actions {
-    margin-top: 30px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-top: 20px;
-    border-top: 1px solid #e4e7ed;
-  }
-
-  .flat-button {
-    border: 1px solid #dcdfe6;
-    background: #fff;
-    color: #606266;
-    
-    &:hover {
-      border-color: #c0c4cc;
-      background: #f5f7fa;
-    }
-    
-    &.primary {
-      background: #409eff;
-      border-color: #409eff;
-      color: #fff;
-      
-      &:hover {
-        background: #66b1ff;
-        border-color: #66b1ff;
-      }
-      
-      &:disabled {
-        background: #a0cfff;
-        border-color: #a0cfff;
-      }
-    }
-  }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; min-height: 280px; }
+.form-card { padding: 20px; background: rgb(255 255 255 / 3%); border-radius: 10px; .fc-title { display: flex; gap: 6px; align-items: center; padding-bottom: 12px; margin-bottom: 16px; font-size: 14px; font-weight: 600; color: var(--text-primary); } }
+.inner-form {
+  :deep(.el-form-item) { margin-bottom: 12px; }
+  :deep(.el-form-item__label) { font-size: 13px; font-weight: 500; color: var(--text-secondary); }
+  :deep(.el-input__wrapper) { border-radius: 8px; }
+  :deep(.el-input__inner) { height: 36px; }
 }
+.opt-list { display: flex; flex-direction: column; gap: 0; }
+.opt-item { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; cursor: pointer;
+  &:last-child { border-bottom: none; }
+  .opt-text { strong { display: block; font-size: 14px; font-weight: 500; color: var(--text-primary); } small { font-size: 12px; color: var(--text-tertiary); } }
+}
+.progress-view { display: flex; flex-direction: column; gap: 16px; }
+.console-box { display: flex; flex-direction: column; min-height: 220px; max-height: calc(100vh - 390px); overflow: hidden; background: #1e1e1e; border: 1px solid var(--border-subtle); border-radius: 8px; }
+.console-bar { display: flex; gap: 6px; align-items: center; padding: 8px 14px; background: #252526; border-bottom: 1px solid #333;
+  .cb-dot { width: 10px; height: 10px; background: #f56c6c; border-radius: 50%; } .cb-title { margin-left: auto; font-family: monospace; font-size: 11px; color: #888; } }
+.console-body { @keyframes blink { 50% { opacity: 0; } } flex: 1; padding: 12px 14px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.7;
+  .cl-line { display: flex; } .cl-ts { flex-shrink: 0; margin-right: 8px; color: #6a9955; } .cl-msg { color: #d4d4d4; } .cl-cursor { color: #67c23a; animation: blink 1s step-end infinite; } }
+.console-body::-webkit-scrollbar { width: 4px; }
+.console-body::-webkit-scrollbar-thumb { background: rgb(255 255 255 / 8%); border-radius: 4px; }
+.progress-block { padding: 14px 18px; background: var(--btn-ghost-bg); border-radius: 8px; }
+.pb-info { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; color: var(--text-tertiary);
+  .c-green { display: flex; gap: 4px; align-items: center; font-weight: 600; color: #67c23a; } .c-red { font-weight: 600; color: #f56c6c; } .c-blue { display: flex; gap: 4px; align-items: center; font-weight: 600; color: #409eff; } }
+.pb-track { height: 6px; overflow: hidden; background: var(--border-subtle); border-radius: 3px; }
+.pb-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease;
+  &.f-blue { background: linear-gradient(90deg, #409eff, #6366f1); } &.f-green { background: #67c23a; } &.f-red { background: #f56c6c; } }
+.step-actions { display: flex; align-items: center; justify-content: space-between; padding-top: 16px; }
+.btn { display: inline-flex; gap: 4px; align-items: center; height: 36px; padding: 0 16px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; border-radius: 8px; transition: all 0.2s; .el-icon { font-size: 14px; } }
+.btn-ghost { color: var(--btn-ghost-color); background: var(--btn-ghost-bg); &:hover { color: var(--btn-ghost-hover-color); background: var(--btn-ghost-hover); } }
+.btn-primary { color: #fff; background: linear-gradient(135deg, #409eff, #6366f1); box-shadow: 0 3px 12px rgb(64 158 255 / 25%); &:hover { box-shadow: 0 5px 18px rgb(64 158 255 / 35%); } }
+.btn-warning { color: #fff; background: linear-gradient(135deg, #e6a23c, #f56c6c); box-shadow: 0 3px 12px rgb(230 162 60 / 25%); &:hover { box-shadow: 0 5px 18px rgb(230 162 60 / 35%); } }
+.btn-group { display: flex; gap: 8px; }
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } }
 </style>

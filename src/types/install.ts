@@ -1,43 +1,59 @@
-// 安装步骤类型
-export interface InstallStep {
-  id: number
-  title: string
-  description: string
-  status: 'wait' | 'process' | 'finish' | 'error'
+// 协议数据
+export interface AgreementData {
+  title: string;
+  content: string;
+  version: string;
+  update_time: string;
 }
 
-// 环境检测结果
-export interface EnvironmentCheckResult {
-  item: string
-  required: string
-  current: string
-  status: 'success' | 'warning' | 'error'
-  message: string
+// 环境检测项
+export interface EnvironmentCheckItem {
+  name: string;
+  need: string;
+  required: string;
+  current: string;
+  status: boolean;
+  status_text: string;
+  message: string;
+  is_required: boolean;
+}
+
+// 目录权限检查结果
+export interface DirectoryPermissionCheckResult {
+  path: string;
+  path_name: string;
+  name: string;
+  required: boolean;
+  permission_type: 'read_only' | 'read_write' | 'write_only';
+  description: string;
+  exists: boolean;
+  is_readable: boolean;
+  is_writable: boolean;
+  status: boolean;
+  status_text: string;
+  message: string;
 }
 
 // 数据库配置
 export interface DatabaseConfig {
-  host: string
-  port: string
-  username: string
-  password: string
-  database: string
-  prefix: string
+  host: string;
+  port: number;
+  username: string;
+  password: string;
+  database: string;
+  prefix: string;
+  // Redis 配置
+  redisHost: string;
+  redisPort: number;
+  redisPassword: string;
 }
 
 // 管理员配置
 export interface AdminConfig {
-  username: string
-  password: string
-  siteTitle: string
-  siteDescription: string
-}
-
-// 安装进度数据
-export interface InstallProgressData {
-  step: number
-  total: number
-  percentage: number
-  message: string
-  status: 'processing' | 'success' | 'error'
+  username: string;
+  password: string;
+  email: string;
+  site_name: string;
+  install_database: boolean;
+  build_project: boolean;
 }

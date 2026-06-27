@@ -1,97 +1,56 @@
 <template>
   <div class="environment-step">
-    <div class="step-content">
-      <div class="environment-content">
-        <!-- 环境要求检测 -->
-        <div class="section">
-          <h4 class="step-title">系统环境要求</h4>
-          <el-table :data="environmentCheckItems"  class="flat-table" v-loading="loading">
-            <el-table-column prop="name" label="检测项目" width="200" />
-            <el-table-column prop="need" label="要求" width="150" />
-            <el-table-column prop="current" label="当前状态" width="120">
-              <template #default="{ row }">
-                <el-tag :type="getStatusType(row.status)" class="flat-tag">
-                  {{ row.statusText }}
-                </el-tag>
-              </template>
-            </el-table-column>
-          
-            <el-table-column prop="message" label="详情状态" />
-          </el-table>
-        </div>
-
-        <!-- 目录权限检测 -->
-        <div class="section">
-          <h4 class="step-title">权限要求</h4>
-          <el-table :data="directoryCheckItems"  class="flat-table" v-loading="loading">
-            <el-table-column prop="pathName" label="检查项目" width="150" />
-            <el-table-column prop="path" label="路径" width="250">
-              <template #default="{ row }">
-                <span class="path-text">{{ row.path }}</span>
-              </template>
-            </el-table-column>
-            <el-table-column label="要求" width="120">
-              <template #default="{ row }">
-                <el-tag :type="getPermissionType(row.permissionType)" class="flat-tag">
-                  {{ getPermissionText(row.permissionType) }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column label="状态" width="100">
-              <template #default="{ row }">
-                <el-tag :type="row.status ? 'success' : 'danger'" class="flat-tag">
-                  {{ row.status ? '正常' : '异常' }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column label="详细状态" >
-              <template #default="{ row }">
-                <div class="status-details">
-                  <span v-if="row.exists" class="status-item success">存在</span>
-                  <span v-else class="status-item danger">不存在</span>
-                  <span v-if="row.isReadable" class="status-item success">可读</span>
-                  <span v-else class="status-item danger">不可读</span>
-                  <span v-if="row.isWritable" class="status-item success">可写</span>
-                  <span v-else class="status-item danger">不可写</span>
-                </div>
-              </template>
-            </el-table-column>
-          </el-table>
-        </div>
-
-        <!-- 检测结果汇总 -->
-        <div class="check-result" v-if="!loading">
-          <el-alert
-            :title="checkResult.title"
-            :type="checkResult.type"
-            :description="checkResult.description"
-            show-icon
-            :closable="false"
-            class="flat-alert"
-          />
+    <!-- 系统环境 -->
+    <div class="section">
+      <div class="section-title"><el-icon color="#409eff"><Monitor /></el-icon> 系统环境要求</div>
+      <div class="env-list" v-loading="loading">
+        <div v-for="item in environmentCheckItems" :key="item.name" class="env-item" :class="item.statusText === '成功' || item.statusText === '正常' ? 'ok' : 'err'">
+          <div class="ei-left">
+            <div class="ei-dot" :class="item.status ? 'dot-ok' : 'dot-err'"></div>
+            <div class="ei-info">
+              <span class="ei-name">{{ item.name }}</span>
+              <span class="ei-detail">需要 {{ item.need }} · 当前 {{ item.current }}</span>
+            </div>
+          </div>
+          <div class="ei-right">
+            <span class="ei-status" :class="item.status ? 'st-ok' : 'st-err'">{{ item.statusText }}</span>
+          </div>
         </div>
       </div>
     </div>
 
-    <div class="step-actions">
-      <el-button @click="$emit('prev')" class="flat-button">
-        <el-icon><ArrowLeft /></el-icon>
-        上一步
-      </el-button>
+    <!-- 目录权限 -->
+    <div class="section">
+      <div class="section-title"><el-icon color="#67c23a"><FolderOpened /></el-icon> 目录权限要求</div>
+      <div class="dir-list" v-loading="loading">
+        <div v-for="item in directoryCheckItems" :key="item.path" class="dir-item" :class="!item.status ? 'dir-err' : ''">
+          <div class="di-left">
+            <div class="di-icon"><el-icon :color="item.status ? '#67c23a' : '#f56c6c'"><Folder v-if="item.status" /><WarningFilled v-else /></el-icon></div>
+            <div class="di-info">
+              <span class="di-name">{{ item.pathName }}</span>
+              <code class="di-path">{{ item.path }}</code>
+            </div>
+          </div>
+          <div class="di-right">
+            <span class="perm-tag" :class="'pt-'+item.permissionType">{{ permissionLabel(item.permissionType) }}</span>
+            <span class="di-status" :class="item.status ? 'st-ok' : 'st-err'">{{ item.status ? '正常' : '异常' }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
 
+    <!-- 结果 -->
+    <div v-if="!loading" class="result-banner" :class="checkResult.type === 'success' ? 'rb-ok' : 'rb-err'">
+      <el-icon :size="18"><CircleCheckFilled v-if="checkResult.type === 'success'" /><WarningFilled v-else /></el-icon>
+      <div><strong>{{ checkResult.title }}</strong><p>{{ checkResult.description }}</p></div>
+    </div>
+
+    <!-- 按钮 -->
+    <div class="step-actions">
+      <button class="btn btn-ghost" @click="$emit('prev')"><el-icon><ArrowLeft /></el-icon> 上一步</button>
       <div>
-        <el-button @click="recheckEnvironment" :loading="loading" class="flat-button">
-          <el-icon><Refresh /></el-icon>
-          重新检测
-        </el-button>
-        <el-button
-          type="primary"
-          :disabled="!environmentPassed"
-          @click="handleNext"
-          class="flat-button primary"
-        >
-          下一步 <el-icon><ArrowRight /></el-icon>
-        </el-button>
+        <button class="btn btn-ghost" @click="recheckEnvironment" :disabled="loading"><el-icon><Refresh /></el-icon> 重新检测</button>
+        <button class="btn btn-primary" :disabled="!environmentPassed || !directoryPassed" @click="handleNext">下一步 <el-icon><ArrowRight /></el-icon></button>
       </div>
     </div>
   </div>
@@ -99,225 +58,98 @@
 
 <script setup lang="ts">
 import { reactive, onMounted, computed } from "vue";
-import { ArrowLeft, ArrowRight, Refresh } from "@element-plus/icons-vue";
+import { ArrowLeft, ArrowRight, Refresh, Monitor, FolderOpened, Folder, WarningFilled, CircleCheckFilled } from "@element-plus/icons-vue";
 import { useInstallStore } from "@/store/module/install";
 
 const installStore = useInstallStore();
-
-// 使用store中的环境检测数据
 const loading = computed(() => installStore.environmentData.loading);
 const environmentCheckItems = computed(() => installStore.environmentCheckItems);
 const directoryCheckItems = computed(() => installStore.directoryCheckItems);
 const environmentPassed = computed(() => installStore.environmentPassed);
-
-
-
-// 计算目录权限检测结果
-const directoryPassed = computed(() => {
-  if (directoryCheckItems.value.length === 0) return false;
-  
-  const hasRequiredError = directoryCheckItems.value.some(
-    item => item.required && !item.status
-  );
-  
-  return !hasRequiredError;
-});
+const directoryPassed = computed(() => directoryCheckItems.value.length === 0 ? false : !directoryCheckItems.value.some((i: any) => i.required && !i.status));
 
 const checkResult = reactive({
   title: computed(() => {
     if (loading.value) return "检测中...";
-    const envPassed = environmentPassed.value;
-    const dirPassed = directoryPassed.value;
-    
-    if (envPassed && dirPassed) return "环境检测通过";
-    if (!envPassed && !dirPassed) return "环境检测未通过";
-    if (!envPassed) return "系统环境未通过";
-    return "目录权限未通过";
+    const e = environmentPassed.value, d = directoryPassed.value;
+    if (e && d) return "环境检测通过";
+    return !e && !d ? "环境检测未通过" : !e ? "系统环境未通过" : "目录权限未通过";
   }),
-  type: computed(() => {
-    if (loading.value) return "info";
-    const envPassed = environmentPassed.value;
-    const dirPassed = directoryPassed.value;
-    return (envPassed && dirPassed) ? "success" : "danger";
-  }) as any,
+  type: computed(() => (environmentPassed.value && directoryPassed.value) ? "success" : "error") as any,
   description: computed(() => {
-    if (loading.value) return "正在检测系统环境和目录权限...";
-
-    const envPassed = environmentPassed.value;
-    const dirPassed = directoryPassed.value;
-    
-    if (envPassed && dirPassed) {
-      return "所有环境要求和目录权限都已满足，可以继续安装";
-    } else {
-      const envErrors = environmentCheckItems.value.filter(
-        item => item.isRequired && item.status === false
-      );
-      const dirErrors = directoryCheckItems.value.filter(
-        item => item.required && !item.status
-      );
-      
-      const errors = [];
-      if (envErrors.length > 0) errors.push(`${envErrors.length} 个系统环境要求`);
-      if (dirErrors.length > 0) errors.push(`${dirErrors.length} 个目录权限要求`);
-      
-      return `有 ${errors.join(' 和 ')} 未达标，请解决后重新检测`;
-    }
+    if (loading.value) return "正在检测...";
+    if (environmentPassed.value && directoryPassed.value) return "所有环境要求已满足，可以继续安装";
+    const ee = environmentCheckItems.value.filter((i: any) => i.isRequired && !i.status);
+    const de = directoryCheckItems.value.filter((i: any) => i.required && !i.status);
+    const m: string[] = [];
+    if (ee.length) m.push(`${ee.length} 个环境要求`);
+    if (de.length) m.push(`${de.length} 个目录权限`);
+    return `有 ${m.join(' 和 ')} 未达标，请解决后重试`;
   }),
 });
 
-onMounted(() => {
-  checkEnvironment();
-});
+const permMap: Record<string, string> = { read_write: '读写', read_only: '只读', write_only: '只写' };
+const permissionLabel = (type: string) => permMap[type] || type;
 
-const checkEnvironment = async () => {
-  await installStore.checkEnvironment();
-};
-
-const recheckEnvironment = () => {
-  checkEnvironment();
-};
-
-const handleNext = () => {
-  if (environmentPassed.value && directoryPassed.value) {
-    emit("next");
-  }
-};
-
-const getStatusType = (status: string): "success" | "warning" | "danger" => {
-  if (status === "success" || status === "warning" || status === "error") {
-    return status === "error" ? "danger" : status;
-  }
-  return "success";
-};
-
-const getPermissionType = (permissionType: string): "success" | "warning" | "info" => {
-  switch (permissionType) {
-    case 'read_write': return 'success';
-    case 'read_only': return 'warning';
-    case 'write_only': return 'info';
-    default: return 'info';
-  }
-};
-
-const getPermissionText = (permissionType: string): string => {
-  switch (permissionType) {
-    case 'read_write': return '读写';
-    case 'read_only': return '只读';
-    case 'write_only': return '只写';
-    default: return permissionType;
-  }
-};
-
-const emit = defineEmits<{
-  prev: [];
-  next: [];
-}>();
+onMounted(() => installStore.checkEnvironment());
+const recheckEnvironment = () => installStore.checkEnvironment();
+const handleNext = () => { if (environmentPassed.value && directoryPassed.value) emit("next"); };
+const emit = defineEmits<{ prev: []; next: [] }>();
 </script>
 
 <style lang="scss" scoped>
-.environment-step {
-  .step-content {
-    min-height: 500px;
+.environment-step { display: flex; flex-direction: column; gap: 18px; }
 
-    .section {
-      margin-bottom: 30px;
-      
-      &:last-child {
-        margin-bottom: 0;
-      }
-    }
+.section-title { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px; }
 
-    .step-title {
-      font-size: 16px;
-      font-weight: 600;
-      color: #303133;
-      margin-bottom: 16px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid #e4e7ed;
-    }
-  }
+.env-list { display: flex; flex-direction: column; gap: 6px; }
+.env-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; border-radius: 8px; background: var(--btn-ghost-bg); transition: background .2s;
+  &:hover { background: var(--btn-ghost-hover); }
+  &.ok { border-left: 3px solid #34d399; }
+  &.warn { border-left: 3px solid #f59e0b; }
+  &.err { border-left: 3px solid #ef4444; background: rgba(239,68,68,.05); }
+}
+.ei-left { display: flex; align-items: center; gap: 10px; }
+.ei-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; &.dot-ok { background: #34d399; } &.dot-err { background: #ef4444; } }
+.ei-info { .ei-name { display: block; font-size: 13px; font-weight: 500; color: var(--text-primary); } .ei-detail { font-size: 11px; color: var(--text-tertiary); } }
+.ei-status { font-size: 12px; font-weight: 500; padding: 2px 10px; border-radius: 10px; }
+.st-ok { background: rgba(52,211,153,.12); color: var(--success-color); }
+.st-warn { background: rgba(245,158,11,.12); color: #f59e0b; }
+.st-err { background: rgba(239,68,68,.12); color: var(--danger-color); }
 
-  .flat-table {
-    margin-bottom: 0;
-    
-    .path-text {
-      font-family: 'Courier New', monospace;
-      font-size: 12px;
-      color: #666;
-    }
-    
-    .status-details {
-      display: flex;
-      gap: 3px;
-      
-      .status-item {
-        font-size: 11px;
-        padding: 1px 4px;
-        border-radius: 2px;
-        
-        &.success {
-          background: #f0f9ff;
-          color: #409eff;
-        }
-        
-        &.danger {
-          background: #fef0f0;
-          color: #f56c6c;
-        }
-      }
-    }
+.dir-list { display: flex; flex-direction: column; gap: 4px; }
+.dir-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; border-radius: 8px; background: var(--btn-ghost-bg);
+  &.dir-err { background: rgba(239,68,68,.04); }
+}
+.di-left { display: flex; align-items: center; gap: 10px; }
+.di-icon { width: 30px; height: 30px; background: var(--btn-ghost-bg); border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+.di-info { .di-name { display: block; font-size: 13px; font-weight: 500; color: var(--text-primary); } .di-path { display: block; font-size: 11px; color: var(--text-tertiary); font-family: 'Courier New', monospace; margin-top: 1px; } }
+.di-right { display: flex; align-items: center; gap: 8px; }
+.perm-tag { font-size: 11px; padding: 1px 8px; border-radius: 6px; font-weight: 500; }
+.pt-read_write { background: rgba(52,211,153,.12); color: var(--success-color); }
+.pt-read_only { background: rgba(245,158,11,.12); color: #f59e0b; }
+.pt-write_only { background: rgba(129,140,248,.12); color: #818cf8; }
+.di-status { font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 6px; }
 
-    .required-tag {
-      background: #fef0f0;
-      color: #f56c6c;
-      border: none;
-      font-size: 12px;
-    }
+.result-banner { display: flex; align-items: flex-start; gap: 10px; padding: 12px 16px; border-radius: 8px; font-size: 13px;
+  &.rb-ok { background: rgba(16,185,129,.08); } &.rb-err { background: rgba(239,68,68,.08); }
+  strong { display: block; color: var(--text-primary); margin-bottom: 2px; } p { color: var(--text-tertiary); margin: 0; font-size: 12px; }
+}
 
-    .optional-text {
-      color: #909399;
-      font-size: 12px;
-    }
-  }
+.step-actions { display: flex; justify-content: space-between; align-items: center; padding-top: 16px; }
 
-  .check-result {
-    margin-top: 20px;
-  }
-
-  .step-actions {
-    margin-top: 30px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-top: 20px;
-    border-top: 1px solid #e4e7ed;
-  }
-
-  .flat-button {
-    border: 1px solid #dcdfe6;
-    background: #fff;
-    color: #606266;
-
-    &:hover {
-      border-color: #c0c4cc;
-      background: #f5f7fa;
-    }
-
-    &.primary {
-      background: #409eff;
-      border-color: #409eff;
-      color: #fff;
-
-      &:hover {
-        background: #66b1ff;
-        border-color: #66b1ff;
-      }
-
-      &:disabled {
-        background: #a0cfff;
-        border-color: #a0cfff;
-      }
-    }
-  }
+.btn {
+  height: 36px; padding: 0 16px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; border: none; transition: all .2s;
+  .el-icon { font-size: 14px; }
+}
+.btn-ghost { background: var(--btn-ghost-bg); color: var(--btn-ghost-color); &:hover { background: var(--btn-ghost-hover); color: var(--btn-ghost-hover-color); } &:disabled { opacity: .4; cursor: not-allowed; } }
+.btn-primary {
+  background: linear-gradient(135deg,#409eff,#6366f1); color: #fff; margin-left: 8px; box-shadow: 0 3px 12px rgba(64,158,255,.25);
+  &:hover:not(:disabled) { box-shadow: 0 5px 18px rgba(64,158,255,.35); }
+  &:disabled { opacity: .4; cursor: not-allowed; }
 }
 </style>
