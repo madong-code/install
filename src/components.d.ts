@@ -11,6 +11,7 @@ declare module 'vue' {
     CompleteStep: typeof import('./components/complete-step.vue')['default']
     ConfigStep: typeof import('./components/config-step.vue')['default']
     DatabaseStep: typeof import('./components/database-step.vue')['default']
+    DeployStep: typeof import('./components/deploy-step.vue')['default']
     ElButton: typeof import('element-plus/es')['ElButton']
     ElCheckbox: typeof import('element-plus/es')['ElCheckbox']
     ElDialog: typeof import('element-plus/es')['ElDialog']
@@ -21,6 +22,8 @@ declare module 'vue' {
     ElLink: typeof import('element-plus/es')['ElLink']
     ElSwitch: typeof import('element-plus/es')['ElSwitch']
     EnvironmentStep: typeof import('./components/environment-step.vue')['default']
+    RouterLink: typeof import('vue-router')['RouterLink']
+    RouterView: typeof import('vue-router')['RouterView']
   }
   export interface ComponentCustomProperties {
     vLoading: typeof import('element-plus/es')['ElLoadingDirective']

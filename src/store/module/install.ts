@@ -1,11 +1,29 @@
 import type {
   AdminConfig,
+  AppEdition,
   DatabaseConfig,
+  TenantConfig,
 } from '@/types/install';
 
 import { installApi } from '@/api/install';
 import { getConfig } from '@/utils/config';
+import {
+  getDefaultTenantEnabled,
+  getEdition,
+  pickEditionFromPayload,
+  resolveEdition,
+  setEdition,
+} from '@/utils/edition';
 import { defineStore } from 'pinia';
+
+function normalizeStatus(status: any) {
+  if (status === true) return 'success';
+  if (status === false) return 'error';
+  return status;
+}
+
+// SaaS 场景下「部署模式」的默认选中值（取自 VITE_ENABLE_TENANT）
+const defaultTenantEnabled = getDefaultTenantEnabled();
 
 export const useInstallStore = defineStore('install', {
   state: () => ({
@@ -26,7 +44,7 @@ export const useInstallStore = defineStore('install', {
       port: 3306,
       username: 'root',
       password: 'root',
-      database: 'madong',
+      database: 'madong_saas',
       prefix: 'md_',
       redisHost: '127.0.0.1',
       redisPort: 6379,
@@ -41,14 +59,38 @@ export const useInstallStore = defineStore('install', {
       site_name: 'Madong管理系统',
       install_database: true,
       build_project: true,
+      enable_tenant: false,
+      create_default_tenant: false,
+      default_tenant_name: '默认租户',
+      tenant_admin_username: 'tenant_admin',
+      tenant_admin_password: '123456',
+      tenant_admin_email: 'tenant@example.com',
     } as AdminConfig,
+
+    // 当前场景（版本）：standard 标准版 | saas 多租户版
+    // 由 initEdition() 通过「后端接口 → 环境变量 → 默认 standard」解析写入
+    edition: getEdition() as AppEdition,
+
+    // 多租户 / 部署模式配置（仅 SaaS 场景生效）
+    tenantConfig: {
+      tenant_mode: defaultTenantEnabled ? 'manual' : 'none',
+      enable_tenant: false,
+      create_default_tenant: false,
+      default_tenant_name: '默认租户',
+      tenant_admin_username: 'tenant_admin',
+      tenant_admin_password: '123456',
+      tenant_admin_email: 'tenant@example.com',
+    } as TenantConfig,
+
+    // 安装完成后记录的实际部署形态
+    saas_mode: false,
 
     // 安装进度
     install_progress: 0,
     // 安装日志
     install_logs: [] as string[],
     // 安装状态
-    install_status: 'idle' as 'idle' | 'installing' | 'success' | 'error',
+    install_status: 'idle' as 'error' | 'idle' | 'installing' | 'success',
     // 安装开始时间
     install_start_time: null as Date | null,
     // 安装是否完成
@@ -57,11 +99,18 @@ export const useInstallStore = defineStore('install', {
     installation_completed_time: null as Date | null,
     // 安装结束时间
     install_end_time: null as Date | null,
-    // 安装时间（从lock读取）
+    // 从install.lock读取的安装日期
     install_time: '',
   }),
 
   getters: {
+    // 当前是否为 SaaS 版（决定是否展示「部署模式」步骤）
+    isSaas: (state) => state.edition === 'saas',
+
+    // 当前是否选择了多租户部署（标准版恒为 false）
+    isMultiTenant: (state) =>
+      state.edition === 'saas' && state.tenantConfig.enable_tenant,
+
     installDuration: (state) => {
       if (!state.install_start_time) return 0;
       const endTime = state.install_end_time || new Date();
@@ -82,16 +131,18 @@ export const useInstallStore = defineStore('install', {
 
       if (duration < 60) {
         return `${duration}秒`;
+      } else {
+        const minutes = Math.floor(duration / 60);
+        const seconds = duration % 60;
+        return `${minutes}分${seconds}秒`;
       }
-      const minutes = Math.floor(duration / 60);
-      const seconds = duration % 60;
-      return `${minutes}分${seconds}秒`;
     },
 
     environmentPassed: (state) => {
       if (state.environmentData.check_items.length === 0) return false;
       const hasRequiredError = state.environmentData.check_items.some(
-        (item: any) => item.is_required && item.status === false,
+        (item: any) =>
+          item.is_required && normalizeStatus(item.status) === 'error',
       );
       return !hasRequiredError;
     },
@@ -102,7 +153,7 @@ export const useInstallStore = defineStore('install', {
         need: item.need,
         required: item.required,
         current: item.current,
-        status: item.status,
+        status: normalizeStatus(item.status),
         statusText: item.status_text,
         message: item.message,
         isRequired: item.is_required,
@@ -128,11 +179,36 @@ export const useInstallStore = defineStore('install', {
   },
 
   actions: {
+    // 解析并写入当前场景：后端检测接口 → 环境变量 → 默认标准版
+    // 内部全程静默容错，不会抛出异常
+    async initEdition() {
+      this.edition = await resolveEdition();
+      this.syncTenantDefaults();
+      return this.edition;
+    },
+
+    // 依据当前场景重置部署模式默认值
+    // 标准版强制单体部署；SaaS 版取 VITE_ENABLE_TENANT 作为默认选中值
+    syncTenantDefaults() {
+      this.updateTenantConfig({
+        tenant_mode:
+          this.edition === 'saas' && defaultTenantEnabled ? 'manual' : 'none',
+      });
+    },
+
     async fetchInstallationStatus() {
       const res = await installApi.checkInstall();
       const data = res.data || {};
       this.installation_completed = data.installed || false;
       this.install_time = data.install_time || '';
+
+      // 兼容通道：若 /install/check 顺带返回了 edition / saas_mode，同样采纳为接口来源
+      const fromCheck = pickEditionFromPayload(data);
+      if (fromCheck) {
+        this.edition = setEdition(fromCheck);
+        this.syncTenantDefaults();
+      }
+
       return this.installation_completed;
     },
 
@@ -167,27 +243,64 @@ export const useInstallStore = defineStore('install', {
         params.append('db_prefix', this.databaseConfig.prefix || '');
 
         // Redis 配置参数
-        params.append('redis_host', this.databaseConfig.redisHost || '127.0.0.1');
-        params.append('redis_port', this.databaseConfig.redisPort?.toString() || '6379');
-        params.append('redis_password', this.databaseConfig.redisPassword || '');
+        params.append(
+          'redis_host',
+          this.databaseConfig.redisHost || '127.0.0.1',
+        );
+        params.append(
+          'redis_port',
+          this.databaseConfig.redisPort?.toString() || '6379',
+        );
+        params.append(
+          'redis_password',
+          this.databaseConfig.redisPassword || '',
+        );
 
         // 管理员配置参数
         params.append('admin_username', this.adminConfig.username || '');
         params.append('admin_password', this.adminConfig.password || '');
         params.append('admin_email', this.adminConfig.email || '');
         params.append('site_name', this.adminConfig.site_name || '');
-        params.append('install_database', this.adminConfig.install_database ? '1' : '0');
-        params.append('build_project', this.adminConfig.build_project ? '1' : '0');
+        params.append(
+          'install_database',
+          this.adminConfig.install_database ? '1' : '0',
+        );
+        params.append(
+          'build_project',
+          this.adminConfig.build_project ? '1' : '0',
+        );
+        // 部署模式参数：仅 SaaS 场景下传递，标准版不携带任何多租户参数
+        if (this.isSaas) {
+          const { tenantConfig } = this;
+          params.append('enable_tenant', tenantConfig.enable_tenant ? '1' : '0');
+          params.append(
+            'create_default_tenant',
+            tenantConfig.create_default_tenant ? '1' : '0',
+          );
 
-        // 多租户（标准版不启用）
-        params.append('enable_tenant', '0');
+          if (tenantConfig.enable_tenant && tenantConfig.create_default_tenant) {
+            params.append(
+              'default_tenant_name',
+              tenantConfig.default_tenant_name || '',
+            );
+            params.append(
+              'tenant_admin_username',
+              tenantConfig.tenant_admin_username || '',
+            );
+            params.append(
+              'tenant_admin_password',
+              tenantConfig.tenant_admin_password || '',
+            );
+            params.append(
+              'tenant_admin_email',
+              tenantConfig.tenant_admin_email || '',
+            );
+          }
+        }
 
         // 拼接完整的 SSE URL
-        const sseUrl =
-          `${config.apiBaseUrl}/install?${params.toString()}`.replace(
-            '//',
-            '/',
-          );
+        const apiBaseUrl = config.apiBaseUrl.replace(/\/$/, '');
+        const sseUrl = `${apiBaseUrl}/install?${params.toString()}`;
 
         return new Promise((resolve, reject) => {
           const eventSource = new EventSource(sseUrl);
@@ -274,14 +387,43 @@ export const useInstallStore = defineStore('install', {
       }
     },
 
+    // 更新数据库配置
     updateDatabaseConfig(config: Partial<DatabaseConfig>) {
       this.databaseConfig = { ...this.databaseConfig, ...config };
     },
 
+    // 更新管理员配置
     updateAdminConfig(config: Partial<AdminConfig>) {
       this.adminConfig = { ...this.adminConfig, ...config };
     },
 
+    // 更新多租户 / 部署模式配置
+    // tenant_mode 为单一事实源，enable_tenant / create_default_tenant 由其派生
+    updateTenantConfig(config: Partial<TenantConfig>) {
+      const merged = { ...this.tenantConfig, ...config };
+
+      // 标准版不支持多租户，强制回落为单体部署
+      const mode = this.edition === 'saas' ? merged.tenant_mode : 'none';
+      merged.tenant_mode = mode;
+      merged.enable_tenant = mode === 'manual';
+      // manual 模式下安装阶段不建租户，安装完成后在后台手动创建
+      merged.create_default_tenant = false;
+
+      this.tenantConfig = merged;
+
+      // 同步到管理员配置，保证安装参数与展示文案一致
+      this.adminConfig = {
+        ...this.adminConfig,
+        enable_tenant: merged.enable_tenant,
+        create_default_tenant: merged.create_default_tenant,
+        default_tenant_name: merged.default_tenant_name,
+        tenant_admin_username: merged.tenant_admin_username,
+        tenant_admin_password: merged.tenant_admin_password,
+        tenant_admin_email: merged.tenant_admin_email,
+      };
+    },
+
+    // 开始安装
     startInstall() {
       this.install_status = 'installing';
       this.install_start_time = new Date();
@@ -290,34 +432,42 @@ export const useInstallStore = defineStore('install', {
       this.install_logs = ['开始安装...'];
     },
 
+    // 更新安装进度
     updateProgress(progress: number, log: string) {
       this.install_progress = progress;
       this.install_logs.push(`[${new Date().toLocaleTimeString()}] ${log}`);
     },
 
+    // 安装完成
     installComplete() {
       this.install_status = 'success';
       this.install_end_time = new Date();
       this.install_progress = 100;
       this.install_time = new Date().toLocaleString('zh-CN');
+      // 记录实际部署形态，供安装完成页展示文案与平台入口
+      this.saas_mode = this.isMultiTenant;
       this.install_logs.push(`安装完成，耗时: ${this.formattedDuration}`);
     },
 
+    // 安装失败
     installFailed(error: string) {
       this.install_status = 'error';
       this.install_end_time = new Date();
       this.install_logs.push(`安装失败: ${error}`);
     },
 
+    // 标记安装完成
     markInstallationCompleted() {
       this.installation_completed = true;
       this.installation_completed_time = new Date();
     },
 
+    // 检查安装状态
     checkInstallationStatus() {
       return this.installation_completed;
     },
 
+    // 重置安装状态
     resetInstall() {
       this.install_progress = 0;
       this.install_logs = [];

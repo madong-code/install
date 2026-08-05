@@ -4,16 +4,16 @@
     <div class="section">
       <div class="section-title"><el-icon color="#409eff"><Monitor /></el-icon> 系统环境要求</div>
       <div class="env-list" v-loading="loading">
-        <div v-for="item in environmentCheckItems" :key="item.name" class="env-item" :class="item.statusText === '成功' || item.statusText === '正常' ? 'ok' : 'err'">
+        <div v-for="item in environmentCheckItems" :key="item.name" class="env-item" :class="item.status === 'success' ? 'ok' : item.status === 'warning' ? 'warn' : 'err'">
           <div class="ei-left">
-            <div class="ei-dot" :class="item.status ? 'dot-ok' : 'dot-err'"></div>
+            <div class="ei-dot" :class="item.status === 'success' ? 'dot-ok' : 'dot-err'"></div>
             <div class="ei-info">
               <span class="ei-name">{{ item.name }}</span>
               <span class="ei-detail">需要 {{ item.need }} · 当前 {{ item.current }}</span>
             </div>
           </div>
           <div class="ei-right">
-            <span class="ei-status" :class="item.status ? 'st-ok' : 'st-err'">{{ item.statusText }}</span>
+            <span class="ei-status" :class="item.status === 'success' ? 'st-ok' : item.status === 'warning' ? 'st-warn' : 'st-err'">{{ item.statusText }}</span>
           </div>
         </div>
       </div>
@@ -32,7 +32,7 @@
             </div>
           </div>
           <div class="di-right">
-            <span class="perm-tag" :class="'pt-'+item.permissionType">{{ permissionLabel(item.permissionType) }}</span>
+            <span class="perm-tag" :class="'pt-'+item.permissionType">{{ getPermissionTypeLabel(item.permissionType) }}</span>
             <span class="di-status" :class="item.status ? 'st-ok' : 'st-err'">{{ item.status ? '正常' : '异常' }}</span>
           </div>
         </div>
@@ -67,6 +67,13 @@ const environmentCheckItems = computed(() => installStore.environmentCheckItems)
 const directoryCheckItems = computed(() => installStore.directoryCheckItems);
 const environmentPassed = computed(() => installStore.environmentPassed);
 const directoryPassed = computed(() => directoryCheckItems.value.length === 0 ? false : !directoryCheckItems.value.some((i: any) => i.required && !i.status));
+const permissionTypeLabels: Record<string, string> = {
+  read_write: '读写',
+  read_only: '只读',
+  write_only: '只写',
+};
+const getPermissionTypeLabel = (permissionType: string) =>
+  permissionTypeLabels[permissionType] || permissionType;
 
 const checkResult = reactive({
   title: computed(() => {
@@ -87,9 +94,6 @@ const checkResult = reactive({
     return `有 ${m.join(' 和 ')} 未达标，请解决后重试`;
   }),
 });
-
-const permMap: Record<string, string> = { read_write: '读写', read_only: '只读', write_only: '只写' };
-const permissionLabel = (type: string) => permMap[type] || type;
 
 onMounted(() => installStore.checkEnvironment());
 const recheckEnvironment = () => installStore.checkEnvironment();

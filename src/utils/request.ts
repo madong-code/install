@@ -1,14 +1,13 @@
-import { getConfig } from './config'
 import axios from 'axios'
-import type { AxiosInstance, AxiosRequestConfig } from 'axios'
+import type { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
 
-// 创建请求客户端
+// 创建请求客户端单例
 class RequestClient {
   private instance: AxiosInstance
 
   constructor() {
     this.instance = axios.create({
-      baseURL: getConfig().apiBaseUrl,
+      baseURL: import.meta.env.VITE_GLOB_API_URL || '/adminapi',
       timeout: 30000,
       headers: {
         'Content-Type': 'application/json',
@@ -22,40 +21,40 @@ class RequestClient {
       },
       (error) => {
         return Promise.reject(error)
-      },
+      }
     )
 
     // 响应拦截器
     this.instance.interceptors.response.use(
-      (response) => {
+      (response: AxiosResponse) => {
         return response.data
       },
       (error) => {
         console.error('请求错误:', error)
         return Promise.reject(error)
-      },
+      }
     )
   }
 
   get<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    return this.instance.get(url, config)
+    return this.instance.get<T, T>(url, config)
   }
 
   post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
-    return this.instance.post(url, data, config)
+    return this.instance.post<T, T>(url, data, config)
   }
 
   put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
-    return this.instance.put(url, data, config)
+    return this.instance.put<T, T>(url, data, config)
   }
 
   delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    return this.instance.delete(url, config)
+    return this.instance.delete<T, T>(url, config)
   }
 }
 
 // 导出单例
-export const request = new RequestClient()
+const request = new RequestClient()
 export default request
 
 export const get = <T = any>(url: string, config?: AxiosRequestConfig): Promise<T> => {

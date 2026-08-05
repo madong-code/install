@@ -66,7 +66,9 @@ const handleGoToAdmin = () => {
 
       <div class="feature-grid">
         <div class="feat">
-          <div class="feat-icon" style="--ic: #409eff">
+          <div class="feat-icon" style="
+
+--ic: #409eff">
             <el-icon><Monitor /></el-icon>
           </div>
           <div>
@@ -74,16 +76,20 @@ const handleGoToAdmin = () => {
           </div>
         </div>
         <div class="feat">
-          <div class="feat-icon" style="--ic: #67c23a">
+          <div class="feat-icon" style="
+
+--ic: #67c23a">
             <el-icon><Connection /></el-icon>
           </div>
           <div><strong>数据库配置</strong><span>支持 MySQL 数据库</span></div>
         </div>
         <div class="feat">
-          <div class="feat-icon" style="--ic: #e6a23c">
+          <div class="feat-icon" style="
+
+--ic: #e6a23c">
             <el-icon><Setting /></el-icon>
           </div>
-          <div><strong>管理配置</strong><span>设置管理员和网站信息</span></div>
+          <div><strong>参数配置</strong><span>初始化管理员与系统选项</span></div>
         </div>
       </div>
 
@@ -123,7 +129,8 @@ const handleGoToAdmin = () => {
       <div class="agreement-content">
         <h4>Madong 开源软件许可协议</h4>
         <p>
-          感谢您选择 Madong（以下简称"本系统"）。在安装使用前，请仔细阅读以下条款。安装或使用本系统即表示您同意接受本协议约束。
+          感谢您选择
+          Madong（以下简称"本系统"）。在安装使用前，请仔细阅读以下条款。安装或使用本系统即表示您同意接受本协议约束。
         </p>
         <h5>一、许可授权</h5>
         <p>
@@ -294,6 +301,7 @@ const handleGoToAdmin = () => {
   }
 }
 
+/* 许可协议勾选 */
 .agreement-bar {
   padding: 10px 0;
   margin: 22px 0 16px;
@@ -311,6 +319,7 @@ const handleGoToAdmin = () => {
   }
 }
 
+/* 协议弹窗内容 */
 .agreement-content {
   max-height: 420px;
   overflow-y: auto;

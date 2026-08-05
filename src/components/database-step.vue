@@ -23,7 +23,6 @@ const testResult = ref<null | {
   description: string;
   title: string;
   type: 'error' | 'success';
-  details?: { label: string; message: string; status: 'ok' | 'fail' }[];
 }>(null);
 const formValid = computed(
   () =>
@@ -57,32 +56,18 @@ const testConnection = async () => {
   installApi
     .testDatabase(formData)
     .then((res: any) => {
-      const data = res.data || {};
-      const dbMsg = data.database || '数据库连接成功';
-      const redisMsg = data.redis || 'Redis 连接成功';
+      const desc = res.data?.message || res.msg || '';
       testResult.value =
         res.code === 0
           ? {
               title: '连接成功',
               type: 'success',
-              description: '数据库和 Redis 连接测试通过',
-              details: [
-                { label: '数据库', message: dbMsg, status: 'ok' as const },
-                { label: 'Redis', message: redisMsg, status: 'ok' as const },
-              ],
+              description: desc || '连接测试通过',
             }
           : {
               title: '连接失败',
               type: 'error',
-              description: res.msg || '请检查配置',
-              details: res.msg?.includes('Redis')
-                ? [
-                    { label: '数据库', message: 'MySQL 连接成功', status: 'ok' as const },
-                    { label: 'Redis', message: res.msg, status: 'fail' as const },
-                  ]
-                : [
-                    { label: '数据库', message: res.msg || '连接失败', status: 'fail' as const },
-                  ],
+              description: desc || '请检查配置',
             };
     })
     .finally(() => {
@@ -186,24 +171,9 @@ const handleNext = async () => {
           v-if="testResult.type === 'success'"
         /><CircleCloseFilled v-else />
       </el-icon>
-      <div style="flex:1">
+      <div>
         <strong>{{ testResult.title }}</strong>
         <p>{{ testResult.description }}</p>
-        <!-- 单项详情 -->
-        <div v-if="testResult.details?.length" class="test-details">
-          <div
-            v-for="item in testResult.details"
-            :key="item.label"
-            class="test-detail-item"
-          >
-            <el-icon :size="14" :color="item.status === 'ok' ? '#10b981' : '#ef4444'">
-              <CircleCheckFilled v-if="item.status === 'ok'" />
-              <CircleCloseFilled v-else />
-            </el-icon>
-            <span class="detail-label">{{ item.label }}:</span>
-            <span class="detail-msg">{{ item.message }}</span>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -284,32 +254,6 @@ const handleNext = async () => {
   p {
     margin: 0;
     font-size: 12px;
-    color: var(--text-tertiary);
-  }
-}
-
-.test-details {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid rgb(0 0 0 / 6%);
-}
-
-.test-detail-item {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  font-size: 12px;
-
-  .detail-label {
-    font-weight: 600;
-    color: var(--text-primary);
-    min-width: 50px;
-  }
-
-  .detail-msg {
     color: var(--text-tertiary);
   }
 }

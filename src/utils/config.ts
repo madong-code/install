@@ -4,13 +4,13 @@ import axios from 'axios';
 const defaultConfig = {
   apiBaseUrl: '/adminapi',
   installInfo: {
-    title: 'MD-Admin 安装向导',
+    title: 'Madong 安装向导',
     version: '1.0.0',
     description: '极速后台开发框架',
   },
   siteInfo: {
     logo: '',
-    name: 'MD-Admin 极速后台开发框架',
+    name: 'madong 极速后台开发框架',
     officialWebsite: 'https://madong.tech',
     community: 'https://madong.tech/ask',
     documentation: 'https://madong.tech/docs',
@@ -22,13 +22,15 @@ const defaultConfig = {
 
 /**
  * 获取 config.json 的正确路径
- * Dev 模式下 public/ 挂载在根路径 /，config.json 在 /config.json
- * 生产模式下文件随构建输出到 VITE_BASE 目录下
+ * Dev模式下Vite把 public/ 挂载在根路径 /，config.json 在 /config.json
+ * 生产模式下文件随构建输出到 VITE_BASE 目录下，如 /install/config.json
  */
 function getConfigUrl(): string {
+  // Dev 模式：public 文件在根路径
   if (import.meta.env.DEV) {
     return '/config.json';
   }
+  // 生产模式：相对于 BASE_URL，确保 base 以 / 结尾避免路径拼接错误
   const base = (import.meta.env.BASE_URL || '/').replace(/\/?$/, '/');
   return `${base}config.json`;
 }
@@ -76,7 +78,7 @@ export async function initConfig() {
   }
 }
 
-// 获取当前配置
+// 获取当前配置的函数
 export function getConfig() {
   return publicConfig;
 }
