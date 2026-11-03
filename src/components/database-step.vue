@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { FormInstance, FormRules } from 'element-plus';
 
-import { computed, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 
 import installApi from '@/api/install';
 import { useInstallStore } from '@/store/module/install';
@@ -34,6 +34,20 @@ const formValid = computed(
     formData.redisHost &&
     formData.redisPort,
 );
+
+// 数据库名占位 / 默认值随部署模式（标准版 / SaaS 多租户版）变化
+const databasePlaceholder = computed(() => installStore.defaultDatabaseName);
+
+// 仅当用户尚未自定义（仍处内置默认/空值）时，跟随模式同步数据库名
+const syncDatabaseDefault = () => {
+  const knownDefaults = ['madong_saas', 'madong', ''];
+  if (knownDefaults.includes(formData.database)) {
+    formData.database = installStore.defaultDatabaseName;
+  }
+};
+
+onMounted(syncDatabaseDefault);
+watch(() => installStore.defaultDatabaseName, syncDatabaseDefault);
 
 const rules: FormRules = {
   host: [{ required: true, message: '请输入主机地址', trigger: 'blur' }],
@@ -124,7 +138,10 @@ const handleNext = async () => {
             />
           </el-form-item>
           <el-form-item label="数据库名" prop="database">
-            <el-input v-model="formData.database" placeholder="madong_saas" />
+            <el-input
+              v-model="formData.database"
+              :placeholder="databasePlaceholder"
+            />
           </el-form-item>
           <el-form-item label="表前缀" prop="prefix">
             <el-input v-model="formData.prefix" placeholder="md_" />

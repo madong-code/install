@@ -61,10 +61,10 @@ export const useInstallStore = defineStore('install', {
       build_project: true,
       enable_tenant: false,
       create_default_tenant: false,
-      default_tenant_name: '默认租户',
-      tenant_admin_username: 'tenant_admin',
-      tenant_admin_password: '123456',
-      tenant_admin_email: 'tenant@example.com',
+      default_tenant_name: '',
+      tenant_admin_username: '',
+      tenant_admin_password: '',
+      tenant_admin_email: '',
     } as AdminConfig,
 
     // 当前场景（版本）：standard 标准版 | saas 多租户版
@@ -110,6 +110,11 @@ export const useInstallStore = defineStore('install', {
     // 当前是否选择了多租户部署（标准版恒为 false）
     isMultiTenant: (state) =>
       state.edition === 'saas' && state.tenantConfig.enable_tenant,
+
+    // 依据场景（版本/部署形态）推导数据库默认名：
+    // 标准版（单体部署）→ madong；SaaS 多租户版 → madong_saas
+    defaultDatabaseName: (state) =>
+      state.edition === 'saas' ? 'madong_saas' : 'madong',
 
     installDuration: (state) => {
       if (!state.install_start_time) return 0;
@@ -184,6 +189,7 @@ export const useInstallStore = defineStore('install', {
     async initEdition() {
       this.edition = await resolveEdition();
       this.syncTenantDefaults();
+      this.applyDatabaseDefaults();
       return this.edition;
     },
 
@@ -390,6 +396,15 @@ export const useInstallStore = defineStore('install', {
     // 更新数据库配置
     updateDatabaseConfig(config: Partial<DatabaseConfig>) {
       this.databaseConfig = { ...this.databaseConfig, ...config };
+    },
+
+    // 依据当前场景推导并写入数据库默认名。
+    // 仅当数据库名仍为内置默认/空值时覆盖，避免冲掉用户已自定义的名称
+    applyDatabaseDefaults() {
+      const knownDefaults = ['madong_saas', 'madong', ''];
+      if (knownDefaults.includes(this.databaseConfig.database)) {
+        this.databaseConfig.database = this.defaultDatabaseName;
+      }
     },
 
     // 更新管理员配置
