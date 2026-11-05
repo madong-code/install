@@ -58,7 +58,7 @@ export const useInstallStore = defineStore('install', {
       email: '405784684@qq.com',
       site_name: 'Madong管理系统',
       install_database: true,
-      build_project: true,
+      build_project: false,
       enable_tenant: false,
       create_default_tenant: false,
       default_tenant_name: '',
