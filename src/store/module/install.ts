@@ -2,6 +2,9 @@ import type {
   AdminConfig,
   AppEdition,
   DatabaseConfig,
+  FrameworkInfo,
+  InstallModeOption,
+  InstallTemplateMode,
   TenantConfig,
 } from '@/types/install';
 
@@ -10,6 +13,8 @@ import { getConfig } from '@/utils/config';
 import {
   getDefaultTenantEnabled,
   getEdition,
+  getFrameworkInfo,
+  isFrameworkVerified,
   pickEditionFromPayload,
   resolveEdition,
   setEdition,
@@ -68,8 +73,13 @@ export const useInstallStore = defineStore('install', {
     } as AdminConfig,
 
     // 当前场景（版本）：standard 标准版 | saas 多租户版
-    // 由 initEdition() 通过「后端接口 → 环境变量 → 默认 standard」解析写入
+    // 由 initEdition() 解析写入：standard 构建锁定；saas 候选需框架验证通过，
+    // 验证失败/接口异常时自动回退 standard（无感知降级）
     edition: getEdition() as AppEdition,
+    // 框架信息验证是否通过：仅 saas 场景且验证通过为 true，据此解锁版本选择操作
+    framework_verified: isFrameworkVerified(),
+    // 框架信息（多租户后端 /install/framework 返回的版本与能力支持）
+    framework_info: null as FrameworkInfo | null,
 
     // 多租户 / 部署模式配置（仅 SaaS 场景生效）
     tenantConfig: {
@@ -101,11 +111,50 @@ export const useInstallStore = defineStore('install', {
     install_end_time: null as Date | null,
     // 从install.lock读取的安装日期
     install_time: '',
+
+    // 前端模板安装模式：mono（大仓）/ separated（多仓），默认取后端配置
+    template_mode: 'mono' as InstallTemplateMode,
+    // 用户是否手动修改过安装模式（未修改时跟随后端默认值）
+    template_mode_touched: false,
+    // 安装模式定义（后端 /install/mode 下发，缺失时使用内置默认）
+    mode_options: {
+      mono: {
+        label: 'mono（大仓模式）',
+        description:
+          '前后端模板来自同一个大仓仓库：管理端/平台端位于 template/mono/apps/{admin,platform}，会员端位于 template/web',
+        templates: ['template/mono', 'template/web'],
+        apps: ['admin', 'platform'],
+      },
+      separated: {
+        label: 'separated（多仓模式）',
+        description:
+          '各端模板独立存放：管理端 template/admin、平台端 template/platform、会员端 template/web',
+        templates: ['template/admin', 'template/platform', 'template/web'],
+        apps: ['admin', 'platform'],
+      },
+    } as Record<string, InstallModeOption>,
+    mode_default: 'mono' as InstallTemplateMode,
   }),
 
   getters: {
-    // 当前是否为 SaaS 版（决定是否展示「部署模式」步骤）
-    isSaas: (state) => state.edition === 'saas',
+    // 当前安装模式的选项定义
+    activeModeOption(state): InstallModeOption | null {
+      return this.mode_options[state.template_mode] || null;
+    },
+
+    // 构建范围：多租户构建全部已定义应用（admin/platform/web），单租户仅 admin、web
+    buildScopeApps(state): string[] {
+      const apps = ['admin'];
+      if (this.tenantConfig.enable_tenant) apps.push('platform');
+      apps.push('web');
+      return apps;
+    },
+
+    // 当前是否为 SaaS 版：场景为 saas 且框架信息验证通过。
+    // 版本切换与选择操作（部署模式步骤、前端模板模式等）仅在此为 true 时解锁；
+    // 框架验证失败/接口异常自动回退 standard 后恒为 false
+    isSaas: (state) =>
+      state.edition === 'saas' && state.framework_verified,
 
     // 当前是否选择了多租户部署（标准版恒为 false）
     isMultiTenant: (state) =>
@@ -184,13 +233,29 @@ export const useInstallStore = defineStore('install', {
   },
 
   actions: {
-    // 解析并写入当前场景：后端检测接口 → 环境变量 → 默认标准版
-    // 内部全程静默容错，不会抛出异常
+    // 解析并写入当前场景：standard 构建锁定 → 框架验证（saas 候选）→ 自动回退标准版
+    // 内部全程静默容错，不会抛出异常；降级时同步重置 SaaS 选择，保证状态一致
     async initEdition() {
       this.edition = await resolveEdition();
+      this.framework_verified = isFrameworkVerified();
+      this.framework_info = getFrameworkInfo();
       this.syncTenantDefaults();
       this.applyDatabaseDefaults();
+      this.validateSelectionState();
       return this.edition;
+    },
+
+    // 状态一致性校验：非 saas（验证未通过/已降级）场景下强制重置多租户专属选择，
+    // 避免版本回退后残留 saas 状态导致安装参数混乱
+    validateSelectionState() {
+      if (this.edition !== 'saas' || !this.framework_verified) {
+        this.template_mode = this.mode_default;
+        this.template_mode_touched = false;
+        this.updateTenantConfig({
+          tenant_mode: defaultTenantEnabled ? 'manual' : 'none',
+          create_default_tenant: false,
+        });
+      }
     },
 
     // 依据当前场景重置部署模式默认值
@@ -208,11 +273,15 @@ export const useInstallStore = defineStore('install', {
       this.installation_completed = data.installed || false;
       this.install_time = data.install_time || '';
 
-      // 兼容通道：若 /install/check 顺带返回了 edition / saas_mode，同样采纳为接口来源
+      // 兼容通道：若 /install/check 顺带返回了 edition / saas_mode，同样采纳为接口来源；
+      // 同步框架验证状态并做一致性校验（未通过框架验证的 saas 不解锁选择操作）
       const fromCheck = pickEditionFromPayload(data);
       if (fromCheck) {
         this.edition = setEdition(fromCheck);
+        this.framework_verified = isFrameworkVerified();
+        this.framework_info = getFrameworkInfo();
         this.syncTenantDefaults();
+        this.validateSelectionState();
       }
 
       return this.installation_completed;
@@ -231,6 +300,27 @@ export const useInstallStore = defineStore('install', {
       this.environmentData.directory_check_items =
         res.data?.directory_check_items || [];
       this.environmentData.loading = false;
+    },
+
+    // 获取安装模式定义（后端 /install/mode），失败时保留内置默认
+    async fetchModeOptions() {
+      try {
+        const res = await installApi.getModes();
+        const data = res.data || {};
+        const modes = data.modes || {};
+        if (data.default_mode) this.mode_default = data.default_mode;
+        if (Object.keys(modes).length > 0) this.mode_options = modes;
+        // 用户未手动选择时跟随默认值
+        if (!this.template_mode_touched) this.template_mode = this.mode_default;
+      } catch (error) {
+        console.warn('获取安装模式定义失败，使用内置默认:', error);
+      }
+    },
+
+    // 更新安装模式
+    updateTemplateMode(mode: InstallTemplateMode) {
+      this.template_mode = mode;
+      this.template_mode_touched = true;
     },
 
     async simulateInstallation() {
@@ -267,6 +357,8 @@ export const useInstallStore = defineStore('install', {
         params.append('admin_password', this.adminConfig.password || '');
         params.append('admin_email', this.adminConfig.email || '');
         params.append('site_name', this.adminConfig.site_name || '');
+        // 前端模板安装模式（mono/separated）
+        params.append('template_mode', this.template_mode || 'mono');
         params.append(
           'install_database',
           this.adminConfig.install_database ? '1' : '0',

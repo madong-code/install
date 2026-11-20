@@ -69,6 +69,10 @@ onMounted(async () => {
   // 场景解析内部已全程容错，不会因后端接口缺失中断初始化
   await Promise.allSettled([initConfig(), installStore.initEdition()]);
 
+  // 安装模式定义：随初始化拉取后端 /install/mode，
+  // 未手动选择时「前端模板模式」选中值跟随后端 config/install.php 的 install_mode.default
+  installStore.fetchModeOptions().catch(() => {});
+
   try {
     await installStore.fetchInstallationStatus();
   } catch (error) {

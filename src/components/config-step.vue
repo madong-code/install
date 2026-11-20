@@ -40,6 +40,17 @@ const formData = reactive({
 const installProgress = computed(() => installStore.install_progress);
 const installStatus = computed(() => installStore.install_status);
 const installLogs = computed(() => installStore.install_logs);
+// 前端模板模式（mono 大仓 / separated 多仓）：读写安装 store
+const templateMode = computed({
+  get: () => installStore.template_mode,
+  set: (value) => installStore.updateTemplateMode(value),
+});
+const modeOptions = computed(() => installStore.mode_options);
+const activeModeOption = computed(() => installStore.activeModeOption);
+// 构建范围提示：多租户 admin/platform/web 全量，单租户仅 admin、web
+const buildScopeText = computed(() =>
+  installStore.buildScopeApps.map((app) => `public/${app}`).join('、'),
+);
 // 实际部署形态以最终选择为准（标准版恒为单体部署；SaaS 版取「部署模式」步骤的选择结果）
 // 用于开始安装时向 SSE 透传 enable_tenant
 const isMultiTenant = computed(() => installStore.isMultiTenant);
@@ -233,6 +244,29 @@ onUnmounted(() => {
           <div class="fc-title">
             <el-icon color="#e6a23c"><Setting /></el-icon> 安装选项
           </div>
+          <!-- 前端模板安装模式（mono 大仓 / separated 多仓）：
+               模板寻址属于多租户版的多端构建能力，标准版固定默认 mono，不展示 -->
+          <div v-if="installStore.isSaas" class="mode-block">
+            <div class="mode-title">前端模板模式</div>
+            <el-radio-group v-model="templateMode" class="mode-group">
+              <el-radio-button
+                v-for="(option, key) in modeOptions"
+                :key="key"
+                :value="key"
+              >
+                {{ option.label }}
+              </el-radio-button>
+            </el-radio-group>
+            <p v-if="activeModeOption?.description" class="mode-desc">
+              {{ activeModeOption.description }}
+            </p>
+            <p
+              v-if="activeModeOption?.templates?.length"
+              class="mode-meta"
+            >
+              模板寻址：{{ activeModeOption.templates.join('、') }}
+            </p>
+          </div>
           <!-- SaaS 版为通用型框架，支持「单体 / 多租户」两种部署形态，
                在此只读展示用户在「部署模式」步骤的选择；标准版固定为单体部署，不展示 -->
           <div v-if="installStore.isSaas" class="mode-list">
@@ -256,7 +290,13 @@ onUnmounted(() => {
               <el-switch v-model="formData.installDatabase" />
             </label>
             <label class="opt-item">
-              <span class="opt-text"><strong>构建打包</strong><small>编译前端资源（耗时较长，默认关闭；可安装后单独构建）</small></span>
+              <span class="opt-text">
+                <strong>构建打包</strong>
+                <small>编译前端资源（耗时较长，默认关闭；可安装后单独构建）</small>
+                <small v-if="formData.buildProject" class="scope-hint">
+                  产物输出：backend/public → {{ buildScopeText }}
+                </small>
+              </span>
               <el-switch v-model="formData.buildProject" />
             </label>
           </div>
@@ -320,6 +360,53 @@ onUnmounted(() => {
     font-weight: 600;
     color: var(--text-primary);
   }
+}
+
+/* 前端模板安装模式 */
+.mode-block {
+  padding-bottom: 12px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border-subtle);
+
+  .mode-title {
+    margin-bottom: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+
+  .mode-group {
+    width: 100%;
+
+    :deep(.el-radio-button) {
+      flex: 1;
+    }
+
+    :deep(.el-radio-button__inner) {
+      width: 100%;
+    }
+  }
+
+  .mode-desc {
+    margin-top: 10px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text-tertiary);
+  }
+
+  .mode-meta {
+    margin-top: 4px;
+    font-family: monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+}
+
+.scope-hint {
+  display: block;
+  margin-top: 2px;
+  font-family: monospace;
+  color: var(--info-color);
 }
 
 .inner-form {
