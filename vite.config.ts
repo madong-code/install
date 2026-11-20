@@ -47,9 +47,12 @@ export default ({ mode }: { mode: string }) => {
     },
     base: VITE_BASE || '/',
     build: {
-      outDir: 'dist',
+      // 构建产物直接输出到后端 backend/public/install，安装向导随构建即用，
+      // 无需手动复制；outDir 在项目根之外，必须显式 emptyOutDir 才会清空重建
+      outDir: resolve(import.meta.dirname, '../../backend/public/install'),
       assetsDir: 'assets',
       sourcemap: false,
+      emptyOutDir: true,
     },
     publicDir: 'public',
   })
