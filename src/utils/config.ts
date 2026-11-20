@@ -12,7 +12,7 @@ const defaultConfig = {
     logo: '',
     name: 'madong 极速后台开发框架',
     officialWebsite: 'https://madong.tech',
-    community: 'https://madong.tech/ask',
+    community: 'https://madong.tech/forum',
     documentation: 'https://madong.tech/docs',
     frontendUrl: '/',
     backendUrl: '/admin',
@@ -40,7 +40,8 @@ export async function loadConfig() {
   const configUrl = getConfigUrl();
 
   try {
-    const response = await axios.get(configUrl, { timeout: 5000 });
+    // 时间戳缓存破坏：config.json 为静态 XHR，浏览器可能长期缓存旧值导致站点链接等配置更新不生效
+    const response = await axios.get(`${configUrl}?t=${Date.now()}`, { timeout: 5000 });
     return deepMerge(defaultConfig, response.data);
   } catch {
     console.warn('加载 config.json 失败，使用默认配置:', configUrl);

@@ -30,7 +30,7 @@ onMounted(() => {
 const goToAdmin = () => window.open('/admin', '_blank');
 const goToPlatform = () => window.open('/platform', '_blank');
 const goToCommunity = () =>
-  window.open('https://madong.tech/question/', '_blank');
+  window.open('https://madong.tech/forum', '_blank');
 const goToFrontend = () => window.open('/', '_blank');
 </script>
 
