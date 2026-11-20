@@ -71,6 +71,25 @@ export type AppEdition = 'saas' | 'standard';
 // 部署模式：none 单体部署 | manual 多租户部署（安装后在后台手动创建租户）
 export type TenantMode = 'manual' | 'none';
 
+// 前端模板安装模式（mono 大仓 / separated 多仓）
+export type InstallTemplateMode = 'mono' | 'separated' | (string & {});
+
+// 安装模式选项定义（由后端 /install/mode 下发）
+export interface InstallModeOption {
+  label: string;
+  description: string;
+  // 模板寻址目录，如 template/mono、template/web
+  templates: string[];
+  // 关联应用，如 admin、platform
+  apps: string[];
+}
+
+// 安装模式定义
+export interface InstallModeDefinition {
+  default_mode: InstallTemplateMode;
+  modes: Record<string, InstallModeOption>;
+}
+
 // 多租户配置
 export interface TenantConfig {
   tenant_mode: TenantMode;
@@ -86,4 +105,20 @@ export interface TenantConfig {
 export interface EditionInfo {
   edition?: string;
   saas_mode?: boolean;
+}
+
+// 框架元信息（多租户后端 /install/framework 下发）
+export interface FrameworkMeta {
+  name: string;
+  version: string;
+  // 支持租户能力：仅多租户版本为 true，前端据此解锁版本选择
+  supports_tenant: boolean;
+  // 支持多模板寻址（mono/separated 与平台端构建）
+  supports_multi_template: boolean;
+}
+
+// 框架信息验证响应：verified 为 true 且 edition 为 saas 时，前端才允许进入非标准版流程
+export interface FrameworkInfo extends EditionInfo {
+  verified?: boolean;
+  framework?: FrameworkMeta;
 }
