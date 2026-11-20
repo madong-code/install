@@ -426,10 +426,14 @@ export const useInstallStore = defineStore('install', {
             try {
               const response = JSON.parse((event as MessageEvent).data);
               const data = response.data || {};
+              const hint = data?.data?.hint ? `（${data.data.hint}）` : '';
               if (data.status === 'error') {
-                this.updateProgress(100, data.message || '安装异常...');
+                this.updateProgress(
+                  100,
+                  `${data.message || '安装异常...'}${hint}`,
+                );
               }
-              this.installFailed(data.message || '安装异常...');
+              this.installFailed(`${data.message || '安装异常...'}${hint}`);
               eventSource.close();
               resolve(response);
             } catch (error) {
